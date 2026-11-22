@@ -200,7 +200,8 @@ void CameraCalibrationDataManagerWidget::onSaveObservationReport()
 {
   try
   {
-    const QString file = QFileDialog::getSaveFileName(this, "Export observation report", QString(), "CSV files (*.csv)");
+    const QString file =
+        QFileDialog::getSaveFileName(this, "Export observation report", QString(), "CSV files (*.csv)");
     if (!file.isEmpty())
       saveObservationReport(file.toStdString());
   }
@@ -236,8 +237,7 @@ void CameraCalibrationDataManagerWidget::saveObservationReport(const std::string
     stream << escape(item->data(0, IMAGE_FILE_NAME_ROLE).toString()) << ','
            << escape(item->data(0, POSE_FILE_NAME_ROLE).toString()) << ','
            << (feature_count == "-" ? QString() : feature_count) << ','
-           << (homography_error == "-" ? QString() : homography_error) << ','
-           << escape(item->text(1)) << '\n';
+           << (homography_error == "-" ? QString() : homography_error) << ',' << escape(item->text(1)) << '\n';
   }
 
   stream.flush();
