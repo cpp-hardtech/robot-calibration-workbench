@@ -417,6 +417,9 @@ void CameraIntrinsicCalibrationWidget::saveResults(const std::string& file) cons
     throw ICalException("Failed to open file: '" + file + "' for writing");
 
   f << YAML::Node(*result_);
+  f.close();
+  if (!f)
+    throw ICalException("Failed to write file: '" + file + "'");
 }
 
 void CameraIntrinsicCalibrationWidget::onSaveROSFormat()
@@ -459,6 +462,9 @@ void CameraIntrinsicCalibrationWidget::saveROSFormat(const std::string& file) co
     throw ICalException("Failed to open file: '" + file + "' for writing");
 
   f << node;
+  f.close();
+  if (!f)
+    throw ICalException("Failed to write file: '" + file + "'");
 }
 
 }  // namespace calibration_workbench

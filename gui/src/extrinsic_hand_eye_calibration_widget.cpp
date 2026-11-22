@@ -331,6 +331,9 @@ void ExtrinsicHandEyeCalibrationWidget::saveResults(const std::string& file)
     throw ICalException("Failed to open file: '" + file + "' for writing");
 
   f << YAML::Node(*result_);
+  f.close();
+  if (!f)
+    throw ICalException("Failed to write file: '" + file + "'");
 }
 
 }  // namespace calibration_workbench
