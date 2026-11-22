@@ -7,21 +7,18 @@ on:
   pull_request:
   workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
+    outputs:
+      deploy: ${{ steps.pages.outputs.deploy }}
     container:
       image: ubuntu:24.04
       env:
@@ -29,9 +26,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
 
       - name: Run Doxygen
         working-directory: docs
@@ -41,14 +35,33 @@ jobs:
           doxygen Doxyfile
           touch build/html/.nojekyll
 
+      - name: Check Pages configuration
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        id: pages
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              const { data } = await github.request('GET /repos/{owner}/{repo}/pages', context.repo);
+              core.setOutput('deploy', data.build_type === 'workflow');
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              core.notice('GitHub Pages has no site for this repository.');
+              core.setOutput('deploy', false);
+            }
+
       - name: Upload artifact
+        if: steps.pages.outputs.deploy == 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: docs/build/html
 
   deploy:
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: needs.build.outputs.deploy == 'true'
     needs: build
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

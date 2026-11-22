@@ -8,6 +8,8 @@ on:
     paths:
       - 'docker/Dockerfile'
       - '.github/workflows/docker.yml'
+      - 'dependencies.repos'
+      - 'package.xml'
   release:
     types:
       - released

@@ -27,15 +27,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          path: target_ws/src
-      - name: Build
-        uses: tesseract-robotics/colcon-action@v12
-        with:
-          ccache-enabled: false
-          rosdep-enabled: true
-          add-ros-ppa: true
-          vcs-file: dependencies.repos
-          target-path: target_ws/src
-          target-args: '-DCMAKE_BUILD_TYPE=Debug -DCALIBRATION_WORKBENCH_ENABLE_TESTING=ON -DCALIBRATION_WORKBENCH_ENABLE_RUN_TESTING=OFF -DCALIBRATION_WORKBENCH_ENABLE_CLANG_TIDY=ON'
-          run-tests: true
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential ca-certificates clang-tidy cmake git ninja-build python3-yaml \
+            libboost-filesystem-dev libceres-dev libeigen3-dev libgtest-dev \
+            libopencv-dev libyaml-cpp-dev qtbase5-dev
+      - name: Build and test
+        run: bash .github/scripts/build-ubuntu.sh "$RUNNER_TEMP/calibration-workbench"
