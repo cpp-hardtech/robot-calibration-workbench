@@ -177,6 +177,20 @@ install(
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET ${PROJECT_NAME}_camera_intrinsic_calibration_app
    AND TARGET ${PROJECT_NAME}_extrinsic_hand_eye_calibration_app)
+  add_test(
+    NAME HeadlessCalibration.OutputPathProtection
+    COMMAND
+      "${CMAKE_COMMAND}" "-DINTRINSIC_APP=$<TARGET_FILE:${PROJECT_NAME}_camera_intrinsic_calibration_app>"
+      "-DHAND_EYE_APP=$<TARGET_FILE:${PROJECT_NAME}_extrinsic_hand_eye_calibration_app>"
+      "-DPLUGIN_DIR=$<TARGET_FILE_DIR:${PROJECT_NAME}_plugins_opencv>"
+      "-DSAMPLE_DIR=${PROJECT_SOURCE_DIR}/examples/data/test_set_10x10"
+      "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/headless_output_path_protection" -P
+      "${CMAKE_CURRENT_SOURCE_DIR}/headless_output_path_protection.cmake")
+  set_tests_properties(HeadlessCalibration.OutputPathProtection PROPERTIES TIMEOUT 30)
+endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET ${PROJECT_NAME}_camera_intrinsic_calibration_app
+   AND TARGET ${PROJECT_NAME}_extrinsic_hand_eye_calibration_app)
   set(intrinsic_app ${PROJECT_NAME}_camera_intrinsic_calibration_app)
   set(hand_eye_app ${PROJECT_NAME}_extrinsic_hand_eye_calibration_app)
   set(plugin_target ${PROJECT_NAME}_plugins_opencv)
