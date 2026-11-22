@@ -2,6 +2,8 @@
 #include <calibration_workbench/core/exceptions.h>
 #include <calibration_workbench/core/serialization.h>
 
+#include "marker_board_dictionary.h"
+
 namespace
 {
 /**
@@ -29,7 +31,8 @@ namespace calibration_workbench
 CharucoGridTarget::CharucoGridTarget(const int rows, const int cols, const float chessboard_dim,
                                      const float aruco_marker_dim, const int dictionary_id)
   : CharucoGridTarget::CharucoGridTarget(cv::aruco::CharucoBoard::create(
-        cols, rows, chessboard_dim, aruco_marker_dim, cv::aruco::getPredefinedDictionary(dictionary_id)))
+        cols, rows, chessboard_dim, aruco_marker_dim,
+        detail::markerBoardDictionary(dictionary_id, rows, cols, detail::MarkerGridLayout::Alternating)))
 {
 }
 

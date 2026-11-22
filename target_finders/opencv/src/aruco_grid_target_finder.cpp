@@ -5,6 +5,8 @@
 #include <calibration_workbench/target_finders/opencv/aruco_grid_target_finder.h>
 #include <calibration_workbench/core/serialization.h>
 
+#include "marker_board_dictionary.h"
+
 namespace
 {
 /**
@@ -34,8 +36,9 @@ namespace calibration_workbench
 {
 ArucoGridTarget::ArucoGridTarget(const int rows, const int cols, const float aruco_marker_dim, const float marker_gap,
                                  const int dictionary_id)
-  : ArucoGridTarget(cv::aruco::GridBoard::create(cols, rows, aruco_marker_dim, marker_gap,
-                                                 cv::aruco::getPredefinedDictionary(dictionary_id)))
+  : ArucoGridTarget(cv::aruco::GridBoard::create(
+        cols, rows, aruco_marker_dim, marker_gap,
+        detail::markerBoardDictionary(dictionary_id, rows, cols, detail::MarkerGridLayout::Full)))
 {
 }
 
