@@ -19,6 +19,9 @@
 #include <QPixmap>
 #include <QScrollBar>
 #include <QVBoxLayout>
+#include <memory>
+#include <utility>
+#include <vector>
 
 namespace calibration_workbench
 {
@@ -143,7 +146,6 @@ void CameraCalibrationDataManagerWidget::onLoadObservations()
   }
   catch (const std::exception& ex)
   {
-    ui_->tree_widget_observations->clear();
     QMessageBox::warning(this, "Error", ex.what());
   }
 }
@@ -152,10 +154,12 @@ void CameraCalibrationDataManagerWidget::loadObservations(const std::string& obs
 {
   QFileInfo observations_file_info(QString::fromStdString(observations_file));
 
-  auto observations = getMember<YAML::Node>(YAML::LoadFile(observations_file), "data");
+  const auto observations = getMember<YAML::Node>(YAML::LoadFile(observations_file), "data");
+  if (!observations.IsSequence())
+    throw ICalException("Observation data must be a sequence");
 
-  // Reset the tree widget
-  ui_->tree_widget_observations->clear();
+  std::vector<std::unique_ptr<QTreeWidgetItem>> items;
+  items.reserve(observations.size());
 
   for (std::size_t i = 0; i < observations.size(); ++i)
   {
@@ -166,23 +170,27 @@ void CameraCalibrationDataManagerWidget::loadObservations(const std::string& obs
     QString pose_file =
         observations_file_info.absoluteDir().filePath(QString::fromStdString(getMember<std::string>(entry, "pose")));
 
-    auto item = new QTreeWidgetItem();
+    auto item = std::make_unique<QTreeWidgetItem>();
     item->setData(0, Qt::EditRole, "Observation " + QString::number(i));
     item->setData(0, IMAGE_FILE_NAME_ROLE, image_file);
     item->setData(0, POSE_FILE_NAME_ROLE, pose_file);
 
     // Add a column entry for the number of detected features
-    auto features_item = new QTreeWidgetItem(item);
+    auto features_item = new QTreeWidgetItem(item.get());
     features_item->setData(0, Qt::EditRole, "Feature count");
     info(features_item, "-");
 
     // Add a column entry for the homography error
-    auto homography_item = new QTreeWidgetItem(item);
+    auto homography_item = new QTreeWidgetItem(item.get());
     homography_item->setData(0, Qt::EditRole, "Homography error (px)");
     info(homography_item, "-");
 
-    ui_->tree_widget_observations->addTopLevelItem(item);
+    items.push_back(std::move(item));
   }
+
+  ui_->tree_widget_observations->clear();
+  for (auto& item : items)
+    ui_->tree_widget_observations->addTopLevelItem(item.release());
 
   ui_->tree_widget_observations->resizeColumnToContents(0);
 }
