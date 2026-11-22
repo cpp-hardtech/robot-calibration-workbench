@@ -121,12 +121,11 @@ cv::Mat ArucoGridBoardTargetFinder::drawTargetFeatures(const cv::Mat& image,
                    [](const Eigen::Vector2d& o) { return cv::Point2d(o.x(), o.y()); });
     marker_corners.push_back(cv_obs);
   }
-  cv::aruco::drawDetectedMarkers(image, marker_corners, marker_ids);
+  cv::Mat overlay = image.clone();
+  cv::aruco::drawDetectedMarkers(overlay, marker_corners, marker_ids);
+  drawTargetOrigin(overlay, target_features, 2.0 * target_.board->getMarkerLength());
 
-  // Draw the target origin
-  drawTargetOrigin(image, target_features, 2.0 * target_.board->getMarkerLength());
-
-  return image;
+  return overlay;
 }
 
 TargetFinderOpenCV::ConstPtr ArucoGridTargetFinderFactory::create(const YAML::Node& config) const

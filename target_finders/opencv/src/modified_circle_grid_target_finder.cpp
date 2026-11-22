@@ -484,12 +484,9 @@ TargetFeatures2D ModifiedCircleGridTargetFinder::findTargetFeatures(const cv::Ma
 cv::Mat ModifiedCircleGridTargetFinder::drawTargetFeatures(const cv::Mat& image,
                                                            const TargetFeatures2D& target_features) const
 {
-  // Draw the target origin
-  drawTargetOrigin(image, target_features, 2.0 * target_.spacing);
-
-  // Draw all detected circles
   CircleDetector circle_detector_(params_);
   cv::Mat out_image = circle_detector_.drawDetectedCircles(image);
+  drawTargetOrigin(out_image, target_features, 2.0 * target_.spacing);
 
   // Draw the detected circle centers
   std::vector<cv::Point2d> cv_obs;
