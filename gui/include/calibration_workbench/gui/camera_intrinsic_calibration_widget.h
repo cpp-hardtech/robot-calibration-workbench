@@ -3,11 +3,14 @@
 #include <calibration_workbench/gui/camera_calibration_data_manager_widget.h>
 #include <opencv2/core/types.hpp>
 
+#include <cstddef>
+
 class QToolBar;
 
 namespace calibration_workbench
 {
 class CameraIntrinsicResult;
+struct CameraIntrinsicProblem;
 
 /**
  * @brief Widget for performing camera intrinsic calibration from a data set of 2D image observations.
@@ -36,6 +39,9 @@ public:
    * @throws Exception on failure
    */
   void calibrate();
+
+  /** @brief Populates observation diagnostics and returns the number of usable observations. */
+  std::size_t validateObservations();
 
   /** @brief Returns whether the current calibration result converged. */
   bool calibrationConverged() const;
@@ -81,6 +87,8 @@ protected:
   std::shared_ptr<CameraIntrinsicResult> result_;
 
 private:
+  CameraIntrinsicProblem collectObservations(cv::Size& image_size);
+
   cv::Size result_image_size_;
 };
 

@@ -52,9 +52,10 @@ file(WRITE "${OUTPUT_DIR}/with-guesses.yaml" "${guesses_yaml}")
 function(
   run_calibration
   executable
+  mode
   expected
   reason)
-  execute_process(COMMAND "${executable}" --headless ${ARGN} RESULT_VARIABLE status ERROR_VARIABLE error)
+  execute_process(COMMAND "${executable}" "${mode}" ${ARGN} RESULT_VARIABLE status ERROR_VARIABLE error)
   if(NOT
      status
      STREQUAL
@@ -69,6 +70,7 @@ endfunction()
 
 run_calibration(
   "${HAND_EYE_APP}"
+  --headless
   1
   "No usable observations"
   "${config}"
@@ -77,6 +79,7 @@ run_calibration(
 
 run_calibration(
   "${INTRINSIC_APP}"
+  --headless
   0
   ""
   "${OUTPUT_DIR}/opencv.yaml"
@@ -87,6 +90,7 @@ run_calibration(
   "${intrinsic_report}")
 run_calibration(
   "${HAND_EYE_APP}"
+  --headless
   0
   ""
   "${config}"
@@ -96,6 +100,7 @@ run_calibration(
   "${hand_eye_report}")
 run_calibration(
   "${INTRINSIC_APP}"
+  --headless
   1
   "pose"
   "${OUTPUT_DIR}/with-guesses.yaml"
@@ -103,6 +108,7 @@ run_calibration(
   "${rejected_result}")
 run_calibration(
   "${HAND_EYE_APP}"
+  --headless
   1
   "pose"
   "${config}"
@@ -110,6 +116,7 @@ run_calibration(
   "${rejected_result}")
 run_calibration(
   "${HAND_EYE_APP}"
+  --headless
   1
   "must differ"
   "${config}"
@@ -147,4 +154,94 @@ if(NOT
       MATCHES
       "poses/0.yaml\",100,[0-9.]+,\"Included in calibration\"")
   message(FATAL_ERROR "Observation report does not contain the expected diagnostics")
+endif()
+
+set(validation_report "${OUTPUT_DIR}/validation.csv")
+set(rejected_report "${OUTPUT_DIR}/rejected-validation.csv")
+set(missing_image "${OUTPUT_DIR}/missing-image.yaml")
+file(WRITE "${missing_image}" "data:\n  - image: missing-image.png\n    pose: \"${SAMPLE_DIR}/poses/0.yaml\"\n")
+
+foreach(app IN ITEMS "${INTRINSIC_APP}" "${HAND_EYE_APP}")
+  file(REMOVE "${validation_report}" "${rejected_report}")
+  run_calibration(
+    "${app}"
+    --validate-only
+    0
+    ""
+    "${config}"
+    "${config}"
+    "${validation_report}")
+  run_calibration(
+    "${app}"
+    --validate-only
+    1
+    "No usable observations"
+    "${config}"
+    "${missing_image}"
+    "${rejected_report}")
+  file(STRINGS "${validation_report}" validation_rows)
+  list(LENGTH validation_rows row_count)
+  file(READ "${rejected_report}" rejected_csv)
+  if(NOT
+     row_count
+     EQUAL
+     16
+     OR NOT
+        validation_rows
+        MATCHES
+        "Included in calibration"
+     OR NOT
+        rejected_csv
+        MATCHES
+        "missing-image.png.*Image file does not exist")
+    message(FATAL_ERROR "Validate-only observation reports are missing the expected diagnostics")
+  endif()
+endforeach()
+
+set(collision_image "${OUTPUT_DIR}/report-image.png")
+set(collision_pose "${OUTPUT_DIR}/report-pose.yaml")
+set(collision_manifest "${OUTPUT_DIR}/report-collision.yaml")
+configure_file("${SAMPLE_DIR}/images/0.png" "${collision_image}" COPYONLY)
+configure_file("${SAMPLE_DIR}/poses/0.yaml" "${collision_pose}" COPYONLY)
+file(SHA256 "${collision_image}" image_before)
+file(SHA256 "${collision_pose}" pose_before)
+file(WRITE "${collision_manifest}" "data:\n")
+foreach(image IN LISTS images)
+  get_filename_component(stem "${image}" NAME_WE)
+  if(stem STREQUAL "0")
+    file(APPEND "${collision_manifest}" "  - image: report-image.png\n    pose: report-pose.yaml\n")
+  else()
+    file(APPEND "${collision_manifest}" "  - image: \"${image}\"\n    pose: \"${SAMPLE_DIR}/poses/${stem}.yaml\"\n")
+  endif()
+endforeach()
+
+run_calibration(
+  "${INTRINSIC_APP}"
+  --validate-only
+  1
+  "image and pose paths"
+  "${config}"
+  "${collision_manifest}"
+  "${collision_image}")
+run_calibration(
+  "${HAND_EYE_APP}"
+  --headless
+  1
+  "image and pose paths"
+  "${config}"
+  "${collision_manifest}"
+  "${OUTPUT_DIR}/collision-calibration.yaml"
+  --observation-report
+  "${collision_pose}")
+file(SHA256 "${collision_image}" image_after)
+file(SHA256 "${collision_pose}" pose_after)
+if(NOT
+   image_before
+   STREQUAL
+   image_after
+   OR NOT
+      pose_before
+      STREQUAL
+      pose_after)
+  message(FATAL_ERROR "Observation report modified an input file")
 endif()

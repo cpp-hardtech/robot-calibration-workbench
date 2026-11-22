@@ -14,7 +14,9 @@
 #include <QCloseEvent>
 #include <QDialog>
 #include <QFileDialog>
+#include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QMessageBox>
 #include <QPixmap>
 #include <QScrollBar>
@@ -229,6 +231,25 @@ void CameraCalibrationDataManagerWidget::saveObservationReport(const std::string
   const auto tree = ui_->tree_widget_observations;
   if (tree->topLevelItemCount() == 0)
     throw ICalException("No observations have been added");
+
+  const auto normalizedPath = [](const QString& path) {
+    const QFileInfo info(path);
+    const QString canonical = info.canonicalFilePath();
+    if (!canonical.isEmpty())
+      return canonical;
+
+    const QString parent = info.absoluteDir().canonicalPath();
+    return parent.isEmpty() ? QDir::cleanPath(info.absoluteFilePath()) : QDir(parent).filePath(info.fileName());
+  };
+  const QString report_path = normalizedPath(QString::fromStdString(file));
+  for (int i = 0; i < tree->topLevelItemCount(); ++i)
+  {
+    const auto item = tree->topLevelItem(i);
+    const QString image = item->data(0, IMAGE_FILE_NAME_ROLE).toString();
+    const QString pose = item->data(0, POSE_FILE_NAME_ROLE).toString();
+    if (report_path == normalizedPath(image) || (!pose.isEmpty() && report_path == normalizedPath(pose)))
+      throw ICalException("Observation report path must differ from image and pose paths: '" + file + "'");
+  }
 
   QSaveFile output(QString::fromStdString(file));
   if (!output.open(QIODevice::WriteOnly | QIODevice::Text))

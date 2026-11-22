@@ -197,7 +197,7 @@ void ExtrinsicHandEyeCalibrationWidget::onCalibrate()
   }
 }
 
-void ExtrinsicHandEyeCalibrationWidget::calibrate()
+Observation2D3D::Set ExtrinsicHandEyeCalibrationWidget::collectObservations()
 {
   // Check if there are any observations before continuing
   if (ui_->tree_widget_observations->topLevelItemCount() == 0)
@@ -206,11 +206,7 @@ void ExtrinsicHandEyeCalibrationWidget::calibrate()
   // Load the target finder
   loadTargetFinder();
 
-  // Create the calibration problem
-  ExtrinsicHandEyeProblem2D3D problem;
-  problem.camera_mount_to_camera_guess = camera_transform_guess_widget_->save().as<Eigen::Isometry3d>();
-  problem.target_mount_to_target_guess = target_transform_guess_widget_->save().as<Eigen::Isometry3d>();
-  problem.intr = camera_intrinsics_widget_->save().as<CameraIntrinsics>();
+  Observation2D3D::Set observations;
 
   for (int i = 0; i < ui_->tree_widget_observations->topLevelItemCount(); ++i)
   {
@@ -262,7 +258,7 @@ void ExtrinsicHandEyeCalibrationWidget::calibrate()
       // Conditionally add the observation to the problem if the mean homography error is less than the threshold
       if (homography_error_mean < ui_->double_spin_box_homography_threshold->value())
       {
-        problem.observations.push_back(obs);
+        observations.push_back(obs);
         info(item, "Included in calibration");
       }
       else
@@ -281,8 +277,21 @@ void ExtrinsicHandEyeCalibrationWidget::calibrate()
     }
   }
 
+  return observations;
+}
+
+std::size_t ExtrinsicHandEyeCalibrationWidget::validateObservations() { return collectObservations().size(); }
+
+void ExtrinsicHandEyeCalibrationWidget::calibrate()
+{
+  ExtrinsicHandEyeProblem2D3D problem;
+  problem.observations = collectObservations();
   if (problem.observations.empty())
     throw ICalException("No usable observations for calibration");
+
+  problem.camera_mount_to_camera_guess = camera_transform_guess_widget_->save().as<Eigen::Isometry3d>();
+  problem.target_mount_to_target_guess = target_transform_guess_widget_->save().as<Eigen::Isometry3d>();
+  problem.intr = camera_intrinsics_widget_->save().as<CameraIntrinsics>();
 
   // Solve the calibration problem
   result_ = std::make_shared<ExtrinsicHandEyeResult>();
