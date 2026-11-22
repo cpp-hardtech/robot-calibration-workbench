@@ -5,24 +5,53 @@
 #include <boost_plugin_loader/plugin_loader.hpp>
 
 #include <exception>
+#include <filesystem>
 #include <iomanip>
 #include <iostream>
 #include <limits>
 #include <locale>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 
+#include <opencv2/imgcodecs.hpp>
+
 int main(int argc, char** argv)
 {
-  constexpr auto usage = "Usage: calibration_workbench_detect_target <target.yaml> <image>\n";
+  constexpr auto usage = "Usage: calibration_workbench_detect_target <target.yaml> <image> [--overlay <path>] "
+                         "[--correspondences]\n";
   if (argc == 2 && std::string_view(argv[1]) == "--help")
   {
     std::cout << usage;
     return 0;
   }
-  if (argc != 3)
+  if (argc < 3)
   {
     std::cerr << usage;
+    return 2;
+  }
+
+  std::string overlay_path;
+  bool write_correspondences = false;
+  for (int i = 3; i < argc; ++i)
+  {
+    const std::string_view option(argv[i]);
+    if (option == "--correspondences" && !write_correspondences)
+    {
+      write_correspondences = true;
+      continue;
+    }
+    if (option == "--overlay" && overlay_path.empty() && i + 1 < argc)
+    {
+      const std::string_view path(argv[i + 1]);
+      if (!path.empty() && path.substr(0, 2) != "--")
+      {
+        overlay_path = path;
+        ++i;
+        continue;
+      }
+    }
+    std::cerr << "Invalid option or missing value: " << option << '\n' << usage;
     return 2;
   }
 
@@ -38,24 +67,56 @@ int main(int argc, char** argv)
     loader.search_libraries_env = CALIBRATION_WORKBENCH_SEARCH_LIBRARIES_ENV;
     const auto factory = loader.createInstance<TargetFinderFactoryOpenCV>(plugin_type);
     const auto finder = factory->create(config);
-    const auto features = finder->findTargetFeatures(readImageOpenCV(argv[2]));
+    const cv::Mat image = readImageOpenCV(argv[2]);
+    const auto features = finder->findTargetFeatures(image);
     if (features.empty())
     {
       std::cerr << "No target features detected in " << argv[2] << '\n';
       return 1;
     }
 
+    Correspondence2D3D::Set correspondences;
+    if (write_correspondences)
+    {
+      correspondences = finder->target().createCorrespondences(features);
+      if (correspondences.empty())
+        throw std::runtime_error("No target correspondences available");
+    }
+
+    if (!overlay_path.empty())
+    {
+      std::error_code comparison_error;
+      if (std::filesystem::equivalent(overlay_path, argv[1], comparison_error) ||
+          std::filesystem::equivalent(overlay_path, argv[2], comparison_error))
+        throw std::runtime_error("Overlay path must differ from the input configuration and image");
+
+      const cv::Mat overlay = finder->drawTargetFeatures(image, features);
+      if (overlay.empty() || !cv::imwrite(overlay_path, overlay))
+        throw std::runtime_error("Failed to write target overlay: " + overlay_path);
+    }
+
     std::cout.imbue(std::locale::classic());
     std::cout << std::setprecision(std::numeric_limits<double>::max_digits10);
-    std::cout << "feature_id,point_index,x,y\n";
-    for (const auto& [feature_id, points] : features)
+    if (write_correspondences)
     {
-      for (std::size_t i = 0; i < points.size(); ++i)
-        std::cout << feature_id << ',' << i << ',' << points[i].x() << ',' << points[i].y() << '\n';
+      std::cout << "image_x,image_y,target_x,target_y,target_z\n";
+      for (const auto& correspondence : correspondences)
+        std::cout << correspondence.in_image.x() << ',' << correspondence.in_image.y() << ','
+                  << correspondence.in_target.x() << ',' << correspondence.in_target.y() << ','
+                  << correspondence.in_target.z() << '\n';
+    }
+    else
+    {
+      std::cout << "feature_id,point_index,x,y\n";
+      for (const auto& [feature_id, points] : features)
+      {
+        for (std::size_t i = 0; i < points.size(); ++i)
+          std::cout << feature_id << ',' << i << ',' << points[i].x() << ',' << points[i].y() << '\n';
+      }
     }
     if (!std::cout.flush())
     {
-      std::cerr << "Failed to write target detections\n";
+      std::cerr << "Failed to write target CSV\n";
       return 1;
     }
   }
