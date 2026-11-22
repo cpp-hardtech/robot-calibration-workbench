@@ -158,6 +158,9 @@ CameraIntrinsicResult optimize(const CameraIntrinsicProblem& params)
                   [](const auto& observations) { return observations.empty(); }))
     throw OptimizationException("Camera intrinsic calibration requires correspondences for every image");
 
+  if (params.use_extrinsic_guesses && params.extrinsic_guesses.size() != params.image_observations.size())
+    throw OptimizationException("Camera intrinsic calibration requires one extrinsic guess per image");
+
   // Prepare data structure for the camera parameters to optimize
   std::array<double, CalibCameraIntrinsics<double>::size()> internal_intrinsics_data;
   for (int i = 0; i < 9; ++i)

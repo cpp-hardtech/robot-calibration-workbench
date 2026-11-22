@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <calibration_workbench/optimizations/extrinsic_multi_static_camera.h>
 #include <calibration_workbench/optimizations/ceres_math_utilities.h>
+#include <calibration_workbench/core/exceptions.h>
 #include <calibration_workbench_tests/utilities.h>
 #include <calibration_workbench_tests/observation_creator.h>
 
@@ -249,6 +250,51 @@ TEST(ExtrinsicMultiStaticCamera, two_cameras)
   EXPECT_EQ(opt_result.covariance.correlation_coeffs.size(), 153);
 
   printResults(opt_result);
+}
+
+TEST(ExtrinsicMultiStaticCamera, RejectsStaticTargetPoseCountMismatch)
+{
+  ExtrinsicMultiStaticCameraOnlyProblem problem{};
+  problem.fix_first_camera = true;
+  problem.intr = { test::makeKinectCamera().intr };
+  problem.base_to_camera_guess = { Eigen::Isometry3d::Identity() };
+  problem.base_to_target_guess = { Eigen::Isometry3d::Identity() };
+  problem.image_observations.resize(1);
+  problem.image_observations.front().resize(2);
+
+  EXPECT_THROW(optimize(problem), OptimizationException);
+
+  problem.image_observations.clear();
+  EXPECT_THROW(optimize(problem), OptimizationException);
+}
+
+TEST(ExtrinsicMultiStaticCamera, RejectsMovingTargetPoseCountMismatch)
+{
+  ExtrinsicMultiStaticCameraMovingTargetProblem problem{};
+  problem.wrist_to_target_guess = Eigen::Isometry3d::Identity();
+  problem.intr = { test::makeKinectCamera().intr };
+  problem.base_to_camera_guess = { Eigen::Isometry3d::Identity() };
+  problem.wrist_poses = { { Eigen::Isometry3d::Identity() } };
+  problem.image_observations.resize(1);
+  problem.image_observations.front().resize(2);
+
+  EXPECT_THROW(optimize(problem), OptimizationException);
+
+  problem.wrist_poses.clear();
+  EXPECT_THROW(optimize(problem), OptimizationException);
+}
+
+TEST(ExtrinsicMultiStaticCamera, RejectsWristOnlyPoseCountMismatch)
+{
+  ExtrinsicMultiStaticCameraMovingTargetWristOnlyProblem problem{};
+  problem.wrist_to_target_guess = Eigen::Isometry3d::Identity();
+  problem.intr = { test::makeKinectCamera().intr };
+  problem.base_to_camera_guess = { Eigen::Isometry3d::Identity() };
+  problem.wrist_poses = { Eigen::Isometry3d::Identity() };
+  problem.image_observations.resize(1);
+  problem.image_observations.front().resize(2);
+
+  EXPECT_THROW(optimize(problem), OptimizationException);
 }
 
 int main(int argc, char** argv)
