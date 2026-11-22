@@ -215,6 +215,20 @@ TEST_F(ModifiedCircleGridFinderTest, findTargetFeatures) { this->runTest(); }
 
 TEST_F(CharucoFinderTest, findTargetFeatures) { this->runTest(); }
 
+TEST(CircleDetectorMaskTest, filtersKeypointsByImageMask)
+{
+  const cv::Mat image = cv::imread(std::string(TEST_SUPPORT_DIR) + "modified_circle_grid_10x10_0.025.png");
+  ASSERT_FALSE(image.empty());
+  CircleDetector detector(CircleDetectorParams{});
+  std::vector<cv::KeyPoint> keypoints;
+  detector.detect(image, keypoints);
+  ASSERT_FALSE(keypoints.empty());
+
+  const cv::Mat mask = cv::Mat::zeros(image.size(), CV_8UC1);
+  detector.detect(image, keypoints, mask);
+  EXPECT_TRUE(keypoints.empty());
+}
+
 TEST_F(CharucoFinderPredefinedBoardTest, findTargetFeatures) { this->runTest(); }
 
 TEST_F(ObscuredCharucoFinderTest, findTargetFeatures) { this->runTest(); }
