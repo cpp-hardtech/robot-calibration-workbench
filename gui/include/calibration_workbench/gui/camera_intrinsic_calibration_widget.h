@@ -36,6 +36,9 @@ public:
    */
   void calibrate();
 
+  /** @brief Returns whether the current calibration result converged. */
+  bool calibrationConverged() const;
+
   /**
    * @brief Saves the calibration results
    * @throws Exception on failure

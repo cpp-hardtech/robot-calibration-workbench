@@ -2,6 +2,8 @@
 #include <calibration_workbench/gui/aspect_ratio_pixmap_label.h>
 
 #include <filesystem>
+#include <iostream>
+#include <string_view>
 #include <QApplication>
 #include <QDockWidget>
 #include <QIcon>
@@ -18,7 +20,18 @@ void handleSignal(int /*sig*/) { QApplication::instance()->quit(); }
 
 int main(int argc, char** argv)
 {
-  QApplication app(argc, argv);
+  const bool headless = argc > 1 && std::string_view(argv[1]) == "--headless";
+  if (headless && (argc < 5 || argc > 5))
+  {
+    std::cerr << "Usage: calibration_workbench_extrinsic_hand_eye_calibration_app --headless config.yaml observations.yaml results.yaml\n";
+    return 1;
+  }
+
+  int qt_argc = 1;
+  char* qt_argv[] = {argv[0], nullptr};
+  if (headless)
+    qputenv("QT_QPA_PLATFORM", "offscreen");
+  QApplication app(headless ? qt_argc : argc, headless ? qt_argv : argv);
 
   signal(SIGINT, handleSignal);
   signal(SIGTERM, handleSignal);
@@ -87,10 +100,19 @@ int main(int argc, char** argv)
   {
     try
     {
-      cal->loadConfig(argv[1]);
-      cal->loadObservations(argv[2]);
+      const int first_file = headless ? 2 : 1;
+      cal->loadConfig(argv[first_file]);
+      cal->loadObservations(argv[first_file + 1]);
       cal->calibrate();
-      cal->saveResults(argv[3]);
+      if (headless && !cal->calibrationConverged())
+      {
+        std::cerr << "Calibration failed to converge\n";
+        return 1;
+      }
+      cal->saveResults(argv[first_file + 2]);
+      if (headless)
+        return 0;
+
       QMessageBox::StandardButton ret = QMessageBox::question(nullptr, "Calibration",
                                                               "Successfully completed calibration and saved results. "
                                                               "View results in the GUI?");
@@ -102,6 +124,12 @@ int main(int argc, char** argv)
     }
     catch (const std::exception& ex)
     {
+      if (headless)
+      {
+        std::cerr << "Calibration error: " << ex.what() << '\n';
+        return 1;
+      }
+
       QString question;
       QTextStream ss(&question);
       ss << "Error: " << ex.what() << "\n\nOpen GUI to fix?";
