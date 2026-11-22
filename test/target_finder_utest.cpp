@@ -33,8 +33,8 @@ TEST(ChessboardGridFinderTest, createsPlanarCorrespondencesFromPrintedCheckerboa
   const auto correspondences = finder.target().createCorrespondences(features);
   ASSERT_EQ(correspondences.size(), rows * cols);
   EXPECT_TRUE(correspondences.front().in_target.isApprox(Eigen::Vector3d::Zero()));
-  EXPECT_TRUE(correspondences.back().in_target.isApprox(Eigen::Vector3d((cols - 1) * spacing,
-                                                                       (rows - 1) * spacing, 0.0)));
+  EXPECT_TRUE(
+      correspondences.back().in_target.isApprox(Eigen::Vector3d((cols - 1) * spacing, (rows - 1) * spacing, 0.0)));
   EXPECT_NEAR((correspondences[1].in_image - correspondences[0].in_image).norm(), tile, 0.5);
   const cv::Mat blank(image.size(), image.type(), cv::Scalar(255));
   EXPECT_TRUE(finder.findTargetFeatures(blank).empty());
