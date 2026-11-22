@@ -62,14 +62,35 @@ target_cxx_version(${PROJECT_NAME}_pnp PUBLIC VERSION 17)
 if(${CALIBRATION_WORKBENCH_ENABLE_TESTING})
   find_gtest()
 
+  function(add_plugin_example_tests target)
+    set(plugin_target ${PROJECT_NAME}_plugins_opencv)
+    add_dependencies(${target} ${plugin_target})
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux"
+       AND NOT
+           CMAKE_VERSION
+           VERSION_LESS
+           "3.10")
+      set(library_path "$<TARGET_FILE_DIR:${plugin_target}>")
+      if(NOT
+         "$ENV{LD_LIBRARY_PATH}"
+         STREQUAL
+         "")
+        string(APPEND library_path ":$ENV{LD_LIBRARY_PATH}")
+      endif()
+      gtest_discover_tests(${target} DISCOVERY_MODE PRE_TEST PROPERTIES ENVIRONMENT "LD_LIBRARY_PATH=${library_path}")
+    else()
+      add_gtest_discover_tests(${target})
+    endif()
+  endfunction()
+
   # Camera intrinsic calibration
-  add_gtest_discover_tests(${PROJECT_NAME}_camera_intrinsic)
+  add_plugin_example_tests(${PROJECT_NAME}_camera_intrinsic)
   add_dependencies(run_tests ${PROJECT_NAME}_camera_intrinsic)
   target_link_libraries(${PROJECT_NAME}_camera_intrinsic PRIVATE GTest::GTest GTest::Main)
   target_compile_definitions(${PROJECT_NAME}_camera_intrinsic PUBLIC CALIBRATION_WORKBENCH_ENABLE_TESTING)
 
   # Hand-eye calibration
-  add_gtest_discover_tests(${PROJECT_NAME}_extrinsic_hand_eye)
+  add_plugin_example_tests(${PROJECT_NAME}_extrinsic_hand_eye)
   add_dependencies(run_tests ${PROJECT_NAME}_extrinsic_hand_eye)
   target_link_libraries(${PROJECT_NAME}_extrinsic_hand_eye PRIVATE GTest::GTest GTest::Main)
   target_compile_definitions(${PROJECT_NAME}_extrinsic_hand_eye PUBLIC CALIBRATION_WORKBENCH_ENABLE_TESTING)
@@ -81,13 +102,13 @@ if(${CALIBRATION_WORKBENCH_ENABLE_TESTING})
   target_compile_definitions(${PROJECT_NAME}_kinematic_calibration PUBLIC CALIBRATION_WORKBENCH_ENABLE_TESTING)
 
   # Noise qualification
-  add_gtest_discover_tests(${PROJECT_NAME}_noise_qualification_2d)
+  add_plugin_example_tests(${PROJECT_NAME}_noise_qualification_2d)
   add_dependencies(run_tests ${PROJECT_NAME}_noise_qualification_2d)
   target_link_libraries(${PROJECT_NAME}_noise_qualification_2d PRIVATE GTest::GTest GTest::Main)
   target_compile_definitions(${PROJECT_NAME}_noise_qualification_2d PUBLIC CALIBRATION_WORKBENCH_ENABLE_TESTING)
 
   # PnP
-  add_gtest_discover_tests(${PROJECT_NAME}_pnp)
+  add_plugin_example_tests(${PROJECT_NAME}_pnp)
   add_dependencies(run_tests ${PROJECT_NAME}_pnp)
   target_link_libraries(${PROJECT_NAME}_pnp PRIVATE GTest::GTest GTest::Main)
   target_compile_definitions(${PROJECT_NAME}_pnp PUBLIC CALIBRATION_WORKBENCH_ENABLE_TESTING)
