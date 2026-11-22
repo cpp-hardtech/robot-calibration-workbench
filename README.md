@@ -158,6 +158,34 @@ The command returns a nonzero status if detection fails or a requested output ca
 - [Camera intrinsic calibration](docs/page_camera_intrinsic_calibration.dox)
 - [Extrinsic hand-eye calibration](docs/page_extrinsic_hand_eye_calibration.dox)
 
+## Build an observation manifest
+
+Create the observations YAML for a calibration application from an image directory. Add
+`--poses` to pair images with robot poses for hand-eye calibration or intrinsic
+calibration with extrinsic guesses:
+
+```bash
+prefix=install/calibration_workbench
+dataset=/path/to/dataset
+"$prefix/lib/calibration_workbench/calibration_workbench_make_observations" \
+  "$dataset/images" --poses "$dataset/poses" --relative-to "$dataset" > "$dataset/observations.yaml"
+```
+
+The command writes `data` entries with an `image` path and, when requested, a `pose` path.
+The default paths are absolute. With `--relative-to`, save the manifest in the specified
+existing directory so the calibration applications can resolve the relative paths.
+
+The scan includes regular files directly in each directory. Supported image suffixes are
+`.bmp`, `.jpeg`, `.jpg`, `.pbm`, `.pgm`, `.png`, `.pnm`, `.ppm`, `.tif`, `.tiff`, and
+`.webp`. Pose suffixes are `.yaml` and `.yml`. Suffix matching is case-insensitive. Image
+entries are sorted lexicographically by filename stem, and pose matching uses the exact,
+case-sensitive stem. The generator uses file names and leaves image and pose validation
+to the calibration application.
+
+Exit status is `0` for a manifest, `1` for a directory, pairing, or output error, and `2`
+for invalid usage. Empty scans, duplicate stems, and missing pose matches produce a
+diagnostic on standard error before the command writes a manifest.
+
 ## Export observation quality
 
 In either calibration application, choose **File → Export observation report** to save the
