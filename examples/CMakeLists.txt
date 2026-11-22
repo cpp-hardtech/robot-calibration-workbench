@@ -114,6 +114,12 @@ if(${CALIBRATION_WORKBENCH_ENABLE_TESTING})
   target_compile_definitions(${PROJECT_NAME}_pnp PUBLIC CALIBRATION_WORKBENCH_ENABLE_TESTING)
 endif()
 
+add_executable(${PROJECT_NAME}_detect_target detect_target.cpp)
+target_link_libraries(${PROJECT_NAME}_detect_target PRIVATE ${PROJECT_NAME}_target_finders_opencv
+                                                            boost_plugin_loader::boost_plugin_loader)
+target_cxx_version(${PROJECT_NAME}_detect_target PRIVATE VERSION 17)
+add_dependencies(${PROJECT_NAME}_detect_target ${PROJECT_NAME}_plugins_opencv)
+
 # Install the data directory
 install(DIRECTORY data DESTINATION share/${PROJECT_NAME})
 
@@ -141,4 +147,5 @@ install(
           ${PROJECT_NAME}_kinematic_calibration
           ${PROJECT_NAME}_noise_qualification_2d
           ${PROJECT_NAME}_pnp
+          ${PROJECT_NAME}_detect_target
   DESTINATION lib/${PROJECT_NAME})

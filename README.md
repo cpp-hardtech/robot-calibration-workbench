@@ -94,6 +94,21 @@ docker compose build
 docker compose run --rm calibration_workbench
 ```
 
+## Inspect target detections
+
+Read a target configuration and one image without opening a display. Pass a standalone target
+configuration or a calibration YAML with a `target_finder` entry. After sourcing the workspace
+environment, run:
+
+```bash
+./install/calibration_workbench/lib/calibration_workbench/calibration_workbench_detect_target \
+  cal_data.yaml image.png > detections.csv
+```
+
+The CSV contains `feature_id,point_index,x,y` with image coordinates in pixels. The command
+returns a nonzero status for an unreadable input, a failed detector, or an image with no
+detected features.
+
 ## Documentation
 
 - [Getting started](docs/page_getting_started.dox)
