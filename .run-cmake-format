@@ -1,2 +1,6 @@
 #!/bin/bash
-find . \( -name CMakeLists.txt -o -name \*.cmake \) -exec cmake-format -i {} \;
+set -euo pipefail
+
+git ls-files -z --cached --others --exclude-standard -- \
+  ':(glob)**/CMakeLists.txt' ':(glob)**/*.cmake' ':(exclude)cmake/vendor/**' |
+  xargs -0 -r cmake-format -i
