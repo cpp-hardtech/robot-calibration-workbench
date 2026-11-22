@@ -87,8 +87,7 @@ public:
 
 TEST(SerializationTest, NormalizesIsometryRotation)
 {
-  const auto transform =
-      YAML::Load("{x: 0, y: 0, z: 0, qw: 1, qx: 0, qy: 0, qz: 1}").as<Eigen::Isometry3d>();
+  const auto transform = YAML::Load("{x: 0, y: 0, z: 0, qw: 1, qx: 0, qy: 0, qz: 1}").as<Eigen::Isometry3d>();
   EXPECT_TRUE((transform.linear() * Eigen::Vector3d::UnitX()).isApprox(Eigen::Vector3d::UnitY()));
   EXPECT_NEAR(transform.linear().determinant(), 1.0, 1e-12);
 }
