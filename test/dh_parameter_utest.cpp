@@ -61,6 +61,13 @@ TEST(DHChain, FKWithJointSubsetTest)
   EXPECT_THROW(robot.getFK<double>(Eigen::VectorXd::Zero(robot.dof() + 1)), std::runtime_error);
 }
 
+TEST(DHChain, OffsetCopyRejectsMissingRows)
+{
+  const DHChain chain = test::createABBIRB2400();
+  const Eigen::MatrixX4d incomplete = Eigen::MatrixX4d::Zero(chain.dof() - 1, 4);
+  EXPECT_THROW((DHChain(chain, incomplete)), ICalException);
+}
+
 TEST(DHChain, generateObservations3D)
 {
   const std::size_t n = 100;
