@@ -51,6 +51,21 @@ TEST(DHChain, NoisyFKTest)
   EXPECT_FALSE(transform.isApprox(desired));
 }
 
+TEST(DHChain, OffsetCopyPreservesJointMetadata)
+{
+  DHTransform joint(Eigen::Vector4d::Zero(), DHJointType::LINEAR, "lift");
+  joint.min = joint.max = 0.42;
+  const DHChain original({ joint });
+  Eigen::MatrixX4d offsets = Eigen::MatrixX4d::Zero(1, 4);
+  offsets(0, 0) = 0.2;
+  const DHChain adjusted(original, offsets);
+
+  EXPECT_EQ(adjusted.getParamLabels(), original.getParamLabels());
+  EXPECT_EQ(adjusted.getJointTypes(), original.getJointTypes());
+  EXPECT_DOUBLE_EQ(adjusted.createUniformlyRandomPose()[0], 0.42);
+  EXPECT_DOUBLE_EQ(adjusted.getDHTable()(0, 0), 0.2);
+}
+
 TEST(DHChain, FKWithJointSubsetTest)
 {
   DHChain robot = test::createABBIRB2400();
