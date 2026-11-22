@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <random>
 #include <calibration_workbench/analysis/homography_analysis.h>
+#include <calibration_workbench/core/utils.h>
 #include <calibration_workbench_tests/observation_creator.h>
 #include <calibration_workbench_tests/utilities.h>
 
@@ -93,6 +94,15 @@ TEST_F(HomographyTest, NoisyCorrespondences)
   //  double stdev_mag = stdev * std::sqrt(2.0);
   EXPECT_GT(error.maxCoeff(), 0.0);
   EXPECT_GT(error.mean(), 0.0);
+}
+
+TEST(Homography, RejectsCollinearCorrespondences)
+{
+  Correspondence2D3D::Set correspondences;
+  for (int index = 0; index < 4; ++index)
+    correspondences.emplace_back(Eigen::Vector2d(index, 1), Eigen::Vector3d(index, 0, 0));
+
+  EXPECT_THROW(calculateHomography(correspondences), ICalException);
 }
 
 int main(int argc, char** argv)
