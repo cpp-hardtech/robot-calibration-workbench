@@ -59,8 +59,8 @@ DHChain::DHChain(const DHChain& other, const Eigen::MatrixX4d& dh_offsets)
   transforms_.reserve(other.transforms_.size());
   for (std::size_t i = 0; i < other.transforms_.size(); ++i)
   {
-    const DHTransform& transform = other.transforms_.at(i);
-    transforms_.emplace_back(transform.params + dh_offsets.row(i).transpose(), transform.type);
+    transforms_.push_back(other.transforms_.at(i));
+    transforms_.back().params += dh_offsets.row(i).transpose();
   }
 
   base_offset_ = other.base_offset_;
