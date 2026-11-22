@@ -31,7 +31,7 @@ jobs:
         run: |
           apt-get update
           apt-get install -y --no-install-recommends \
-            build-essential clang-tidy cmake git ninja-build python3-yaml \
+            build-essential ca-certificates clang-tidy cmake git ninja-build python3-yaml \
             libboost-filesystem-dev libceres-dev libeigen3-dev libgtest-dev \
             libopencv-dev libyaml-cpp-dev qtbase5-dev
       - name: Build and test
