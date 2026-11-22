@@ -257,6 +257,33 @@ TEST_F(OneFeatureCharucoFinderTest, findTargetFeatures) { this->runTest(); }
 
 TEST_F(ArucoFinderTest, findTargetFeatures) { this->runTest(); }
 
+TEST_F(ArucoFinderTest, usesSingleDetectionForCorrespondences)
+{
+  class SingleDetectionFinder final : public ArucoGridBoardTargetFinder
+  {
+  public:
+    using ArucoGridBoardTargetFinder::ArucoGridBoardTargetFinder;
+
+    TargetFeatures2D findTargetFeatures(const cv::Mat& image) const override
+    {
+      if (++calls == 1)
+        return ArucoGridBoardTargetFinder::findTargetFeatures(image);
+      return {};
+    }
+
+    mutable unsigned calls = 0;
+  };
+
+  const cv::Mat image = cv::imread(filename);
+  ASSERT_FALSE(image.empty());
+  const SingleDetectionFinder single_detection(target);
+
+  const auto correspondences = single_detection.findCorrespondences(image);
+
+  EXPECT_EQ(single_detection.calls, 1u);
+  EXPECT_EQ(correspondences.size(), 4 * n_expected_ids);
+}
+
 TEST_F(ArucoFinderPredefinedBoardTest, findTargetFeatures) { this->runTest(); }
 
 TEST(ArucoBoardMembershipTest, ignoresMarkersFromOutsideConfiguredBoard)

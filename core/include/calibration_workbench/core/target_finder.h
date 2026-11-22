@@ -118,7 +118,7 @@ public:
     if (features.empty())
       throw std::runtime_error("Failed to find any target features");
 
-    return target().createCorrespondences(findTargetFeatures(measurement));
+    return target().createCorrespondences(features);
   }
 
   /**
