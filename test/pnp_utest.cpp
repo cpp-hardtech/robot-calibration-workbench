@@ -1,4 +1,5 @@
 #include <calibration_workbench/optimizations/pnp.h>
+#include <calibration_workbench/optimizations/multi_camera_pnp.h>
 #include <calibration_workbench/analysis/statistics.h>
 #include <calibration_workbench_tests/observation_creator.h>
 #include <calibration_workbench_tests/utilities.h>
@@ -50,6 +51,20 @@ public:
   test::Target target;
   Eigen::Isometry3d target_to_camera;
 };
+
+TEST(MultiCameraPnP, RejectsMismatchedCameraInputs)
+{
+  MultiCameraPnPProblem problem;
+  problem.base_to_target_guess = Eigen::Isometry3d::Identity();
+  problem.base_to_camera.push_back(Eigen::Isometry3d::Identity());
+  problem.intr.push_back(test::makeKinectCamera().intr);
+  EXPECT_THROW(optimize(problem), OptimizationException);
+
+  problem.intr.clear();
+  problem.image_observations.resize(1);
+  problem.image_observations[0].emplace_back(Eigen::Vector2d(500, 400), Eigen::Vector3d(0, 0, 1));
+  EXPECT_THROW(optimize(problem), OptimizationException);
+}
 
 TEST_F(PnP2DTest, PerfectInitialConditions)
 {
