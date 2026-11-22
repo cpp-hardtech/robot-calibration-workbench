@@ -1,6 +1,6 @@
 # Vendored build helpers
 
-These CMake modules are third-party code, copied in verbatim so the build does not have to
+These CMake modules are vendored third-party code so the build does not have to
 fetch them at configure time. They define the helpers the top-level `CMakeLists.txt` uses:
 `extract_package_metadata`, `configure_package`, `configure_component`, `install_targets`,
 `generate_package_config`, `target_cxx_version`, `target_clang_tidy`, `find_gtest`,
@@ -24,9 +24,9 @@ applied to `cmake_tools.cmake`:
 - a note referred to fetching this module with `find_package`; it now describes defining
   `CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS` before including the module.
 
-No functional code was changed.
+The maintainer email pattern in `extract_package_metadata.cmake` accepts plus signs.
 
 ## Updating
 
-To take a newer upstream version, copy the three files back in and reapply those two comment
-edits. Then verify a clean configure still finds every helper listed above.
+To take a newer upstream version, copy the three files back in and reapply the local
+changes listed above. Then verify a clean configure still finds every helper listed above.
