@@ -120,6 +120,19 @@ target_link_libraries(${PROJECT_NAME}_detect_target PRIVATE ${PROJECT_NAME}_targ
 target_cxx_version(${PROJECT_NAME}_detect_target PRIVATE VERSION 17)
 add_dependencies(${PROJECT_NAME}_detect_target ${PROJECT_NAME}_plugins_opencv)
 
+if(CALIBRATION_WORKBENCH_ENABLE_TESTING)
+  add_test(
+    NAME TargetDiagnosticsCli
+    COMMAND
+      ${CMAKE_COMMAND} "-DDETECT_TARGET=$<TARGET_FILE:${PROJECT_NAME}_detect_target>"
+      "-DPLUGIN_DIRECTORY=$<TARGET_FILE_DIR:${PROJECT_NAME}_plugins_opencv>"
+      "-DTARGET_CONFIG=${CMAKE_CURRENT_SOURCE_DIR}/data/test_set_charuco/cal_data.yaml"
+      "-DTARGET_IMAGE=${PROJECT_SOURCE_DIR}/test/images/charuco_unobscured.jpg"
+      "-DTEST_DIRECTORY=${CMAKE_CURRENT_BINARY_DIR}/target-diagnostics-test" -P
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_detect_target.cmake")
+  add_dependencies(run_tests ${PROJECT_NAME}_detect_target)
+endif()
+
 # Install the data directory
 install(DIRECTORY data DESTINATION share/${PROJECT_NAME})
 

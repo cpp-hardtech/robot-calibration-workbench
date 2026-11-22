@@ -126,9 +126,19 @@ environment, run:
   cal_data.yaml image.png > detections.csv
 ```
 
-The CSV contains `feature_id,point_index,x,y` with image coordinates in pixels. The command
-returns a nonzero status for an unreadable input, a failed detector, or an image with no
-detected features.
+The default CSV contains `feature_id,point_index,x,y` with image coordinates in pixels.
+Use `--overlay` to save an annotated image and `--correspondences` to export matched 2D
+image points and 3D target points:
+
+```bash
+./install/calibration_workbench/lib/calibration_workbench/calibration_workbench_detect_target \
+  cal_data.yaml image.png --overlay marked.png --correspondences > correspondences.csv
+```
+
+Use an image extension such as `.png` for the overlay and an output path different from
+the input files. Correspondence CSV columns are `image_x,image_y,target_x,target_y,target_z`.
+Image points are in pixels. Target points use the units defined in the target configuration.
+The command returns a nonzero status if detection fails or a requested output cannot be written.
 
 ## Documentation
 
