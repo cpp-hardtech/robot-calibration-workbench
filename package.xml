@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>calibration_workbench</name>
-  <version>1.2.0</version>
+  <version>0.1.0</version>
   <description>The calibration workbench core package</description>
 
   <author email="chris.lewis@swri.org">Chris Lewis</author>
