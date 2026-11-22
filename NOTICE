@@ -1,0 +1,33 @@
+NOTICE
+
+This repository is a derivative work of the industrial_calibration project,
+originally published at https://github.com/ros-industrial/industrial_calibration
+and licensed under the Apache License, Version 2.0.
+
+The full license text is retained unmodified in the LICENSE file.
+
+Modifications in this repository (documentation, project naming, repository
+branding, removal of upstream CI configuration) and any future contributions
+are Copyright (c) 2026 cpp-hardtech and are distributed under the same
+Apache License, Version 2.0.
+
+In accordance with section 4(b) of the License, modified files carry notices
+stating that changes were made. In accordance with section 4(d), this NOTICE
+file reproduces the attribution above for redistribution.
+
+Vendored build helpers
+
+The files under cmake/vendor/ are third-party CMake modules, copied in so the
+build does not fetch them at configure time:
+
+  extract_package_metadata.cmake
+    BSD 3-Clause, Copyright (c) 2020 ABB Schweiz AG
+  cmake_tools.cmake
+    Apache License 2.0, Copyright (C) 2018 George Cave,
+    Copyright (c) 2020 Southwest Research Institute
+  code_coverage.cmake
+    Apache License 2.0, Copyright (C) 2018-2020 George Cave
+
+Their license headers are retained unmodified. The only local edits are two
+comment lines in cmake_tools.cmake, recorded in cmake/vendor/README.md.
+

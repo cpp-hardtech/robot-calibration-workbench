@@ -1,0 +1,3 @@
+{
+    "hooks": ["share/calibration_workbench/hook/ament_prefix_path.dsv", "share/calibration_workbench/hook/ros_package_path.dsv", "share/calibration_workbench/hook/python_path.dsv"]
+}
