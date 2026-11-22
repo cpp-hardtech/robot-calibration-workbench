@@ -101,6 +101,15 @@ TYPED_TEST(SerializationTestFixture, Test)
   ASSERT_EQ(problem, deserialized_problem);
 }
 
+TEST(SerializationTest, EmptyAlignedVectorRoundTrip)
+{
+  using AlignedVectors = std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>>;
+  const YAML::Node decoded = YAML::Load(YAML::Dump(YAML::Node(AlignedVectors{})));
+
+  ASSERT_TRUE(decoded.IsSequence());
+  EXPECT_TRUE(decoded.as<AlignedVectors>().empty());
+}
+
 int main(int argc, char** argv)
 {
   testing::InitGoogleTest(&argc, argv);
