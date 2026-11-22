@@ -3,6 +3,8 @@
 
 #include "headless_output_arguments.h"
 
+#include "headless_result_paths.h"
+
 #include <filesystem>
 #include <iostream>
 #include <string_view>
@@ -111,6 +113,12 @@ int main(int argc, char** argv)
     try
     {
       const int first_file = headless ? 2 : 1;
+      if (headless)
+      {
+        const char* ros = output->positional_argc > first_file + 3 ? argv[first_file + 3] : nullptr;
+        calibration_workbench::validateHeadlessResultPaths(argv[first_file], argv[first_file + 1], argv[first_file + 2],
+                                                           ros);
+      }
       if (output)
         calibration_workbench::validateObservationReportPath(*output, argv);
       cal->loadConfig(argv[first_file]);
