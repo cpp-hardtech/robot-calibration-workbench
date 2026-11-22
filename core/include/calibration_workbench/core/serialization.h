@@ -133,6 +133,15 @@ struct convert<Eigen::Transform<FloatT, 3, Eigen::Isometry>>
     quat.y() = getMember<FloatT>(node, "qy");
     quat.z() = getMember<FloatT>(node, "qz");
 
+    if (!quat.coeffs().allFinite())
+      return false;
+
+    const FloatT scale = quat.coeffs().cwiseAbs().maxCoeff();
+    if (scale == FloatT(0))
+      return false;
+
+    quat.coeffs() /= scale;
+    quat.normalize();
     val = Eigen::Translation<FloatT, 3>(trans) * quat;
 
     return true;

@@ -85,6 +85,22 @@ public:
   std::shared_ptr<test::PoseGenerator> pg;
 };
 
+TEST(SerializationTest, NormalizesIsometryRotation)
+{
+  const auto transform =
+      YAML::Load("{x: 0, y: 0, z: 0, qw: 1, qx: 0, qy: 0, qz: 1}").as<Eigen::Isometry3d>();
+  EXPECT_TRUE((transform.linear() * Eigen::Vector3d::UnitX()).isApprox(Eigen::Vector3d::UnitY()));
+  EXPECT_NEAR(transform.linear().determinant(), 1.0, 1e-12);
+}
+
+TEST(SerializationTest, RejectsInvalidIsometryRotation)
+{
+  const YAML::Node zero = YAML::Load("{x: 0, y: 0, z: 0, qw: 0, qx: 0, qy: 0, qz: 0}");
+  const YAML::Node invalid = YAML::Load("{x: 0, y: 0, z: 0, qw: .nan, qx: 0, qy: 0, qz: 1}");
+  EXPECT_THROW(zero.as<Eigen::Isometry3d>(), YAML::BadConversion);
+  EXPECT_THROW(invalid.as<Eigen::Isometry3d>(), YAML::BadConversion);
+}
+
 using Implementations = testing::Types<ExtrinsicHandEyeProblem2D3D, ExtrinsicHandEyeProblem3D3D>;
 
 TYPED_TEST_CASE(SerializationTestFixture, Implementations);
