@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <calibration_workbench/optimizations/camera_intrinsic.h>
 #include <calibration_workbench/analysis/camera_intrinsic_calibration_analysis.h>
+#include <calibration_workbench/core/serialization.h>
 #include <calibration_workbench_tests/utilities.h>
 #include <calibration_workbench_tests/observation_creator.h>
 #include <memory>
@@ -150,6 +151,40 @@ TEST(CameraIntrinsicCalibrationValidation, MeasureIntrinsicCalibrationAccuracy)
       EXPECT_GT(result.ang_error.first + 2.0 * result.ang_error.second, threshold);
     }
   }
+}
+
+TEST(ROSCameraCalibration, ImportsExportedCalibration)
+{
+  CameraIntrinsicResult original{};
+  original.intrinsics = CameraIntrinsics{ { 743.0, 752.0, 631.5, 357.0 } };
+  original.distortions = { { -0.21, 0.08, 0.002, -0.002, 0.001 } };
+  YAML::Node document = toROSFormat(original, 1280, 720);
+  document["camera_name"] = "left";
+
+  const auto parsed = fromROSFormat(YAML::Load(YAML::Dump(document)));
+  EXPECT_EQ(parsed.camera_name, "left");
+  EXPECT_EQ(parsed.image_width, 1280);
+  EXPECT_EQ(parsed.image_height, 720);
+  EXPECT_EQ(parsed.intrinsics, original.intrinsics);
+  EXPECT_EQ(parsed.distortions, original.distortions);
+}
+
+TEST(ROSCameraCalibration, RejectsUnsupportedOrMalformedCalibration)
+{
+  CameraIntrinsicResult original{};
+  original.intrinsics = CameraIntrinsics{ { 743.0, 752.0, 631.5, 357.0 } };
+  YAML::Node document = toROSFormat(original, 1280, 720);
+
+  document["distortion_model"] = "equidistant";
+  EXPECT_THROW(fromROSFormat(document), BadFileException);
+  document["distortion_model"] = "plumb_bob";
+
+  document["camera_matrix"]["rows"] = 4;
+  EXPECT_THROW(fromROSFormat(document), BadFileException);
+  document["camera_matrix"]["rows"] = 3;
+
+  document["distortion_coefficients"]["data"].push_back(0.0);
+  EXPECT_THROW(fromROSFormat(document), BadFileException);
 }
 
 int main(int argc, char** argv)
