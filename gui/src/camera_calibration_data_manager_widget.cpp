@@ -206,10 +206,11 @@ void CameraCalibrationDataManagerWidget::drawImage(QTreeWidgetItem* item, int co
     return;
   }
 
+  cv::Mat image;
   try
   {
+    image = readImageOpenCV(image_file.toStdString());
     loadTargetFinder();
-    cv::Mat image = readImageOpenCV(image_file.toStdString());
 
     // Detect the target in the image
     TargetFeatures2D features = target_finder_->findTargetFeatures(image);
@@ -237,8 +238,8 @@ void CameraCalibrationDataManagerWidget::drawImage(QTreeWidgetItem* item, int co
   }
   catch (const std::exception& ex)
   {
-    cv::Mat image = readImageOpenCV(image_file.toStdString());
-    emit imageSelected(toQt(image));
+    if (!image.empty())
+      emit imageSelected(toQt(image));
 
     error(item, QString(ex.what()));
     info(features_item, "-");
