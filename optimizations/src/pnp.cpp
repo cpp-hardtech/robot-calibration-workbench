@@ -26,6 +26,9 @@ std::ostream& operator<<(std::ostream& stream, const PnPResult& result)
 
 PnPResult optimize(const PnPProblem& params)
 {
+  if (params.correspondences.empty())
+    throw OptimizationException("PnP requires at least one correspondence");
+
   // Create the optimization variables from the input guess
   Eigen::AngleAxisd cam_to_tgt_rotation(params.camera_to_target_guess.rotation());
   Eigen::Vector3d cam_to_tgt_angle_axis = cam_to_tgt_rotation.angle() * cam_to_tgt_rotation.axis();
@@ -94,6 +97,9 @@ PnPResult optimize(const PnPProblem& params)
 
 PnPResult optimize(const PnPProblem3D& params)
 {
+  if (params.correspondences.empty())
+    throw OptimizationException("PnP requires at least one correspondence");
+
   // Create the optimization variables from the input guess
   Eigen::AngleAxisd cam_to_tgt_rotation(params.camera_to_target_guess.rotation());
   Eigen::Vector3d cam_to_tgt_angle_axis(cam_to_tgt_rotation.angle() * cam_to_tgt_rotation.axis());

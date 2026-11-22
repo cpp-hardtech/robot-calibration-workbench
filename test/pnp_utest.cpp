@@ -219,6 +219,17 @@ TEST_F(PnP3DTest, PerturbedInitialCondition)
   EXPECT_LT(residual_mean + 3 * residual_stdev, 1.0e-10);
 }
 
+TEST(PnP, RejectsEmptyCorrespondences)
+{
+  PnPProblem problem_2d{};
+  problem_2d.camera_to_target_guess = Eigen::Isometry3d::Identity();
+  EXPECT_THROW(optimize(problem_2d), OptimizationException);
+
+  PnPProblem3D problem_3d{};
+  problem_3d.camera_to_target_guess = Eigen::Isometry3d::Identity();
+  EXPECT_THROW(optimize(problem_3d), OptimizationException);
+}
+
 int main(int argc, char** argv)
 {
   testing::InitGoogleTest(&argc, argv);
