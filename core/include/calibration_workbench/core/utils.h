@@ -6,6 +6,8 @@
 #include <calibration_workbench/core/camera_intrinsics.h>
 #include <calibration_workbench/core/pose_6d.h>
 
+#include <cmath>
+
 namespace calibration_workbench
 {
 /**
@@ -149,10 +151,24 @@ Eigen::Transform<T, 3, Eigen::Isometry> toIsometry(const T* angle_axis_ptr, cons
   using Vector3 = Eigen::Matrix<T, 3, 1>;
   using Isometry3 = Eigen::Transform<T, 3, Eigen::Isometry>;
 
-  Eigen::Map<const Vector3> angle_axis(angle_axis_ptr);
-  Eigen::Map<const Vector3> translation(translation_ptr);
+  const Eigen::Map<const Vector3> angle_axis(angle_axis_ptr);
   Isometry3 pose = Isometry3::Identity();
-  pose = Eigen::Translation<T, 3>(translation) * Eigen::AngleAxis<T>(angle_axis.norm(), angle_axis.normalized());
+  pose.translation() = Eigen::Map<const Vector3>(translation_ptr);
+
+  const T angle_squared = angle_axis.squaredNorm();
+  if (angle_squared == T(0))
+  {
+    // First-order rotation around the identity.
+    pose.linear() << T(1), -angle_axis.z(), angle_axis.y(), angle_axis.z(), T(1), -angle_axis.x(), -angle_axis.y(),
+        angle_axis.x(), T(1);
+  }
+  else
+  {
+    using std::sqrt;
+    const T angle = sqrt(angle_squared);
+    pose.linear() = Eigen::AngleAxis<T>(angle, angle_axis / angle).toRotationMatrix();
+  }
+
   return pose;
 }
 
