@@ -8,6 +8,8 @@
 
 #include <ceres/ceres.h>
 
+#include <algorithm>
+
 namespace calibration_workbench
 {
 static Pose6d solvePnP(const CameraIntrinsics& intr, const Correspondence2D3D::Set& obs, const Pose6d& guess)
@@ -115,6 +117,11 @@ std::ostream& operator<<(std::ostream& stream, const CameraIntrinsicResult& resu
 
 CameraIntrinsicResult optimize(const CameraIntrinsicProblem& params)
 {
+  if (params.image_observations.empty() ||
+      std::any_of(params.image_observations.begin(), params.image_observations.end(),
+                  [](const auto& observations) { return observations.empty(); }))
+    throw OptimizationException("Camera intrinsic calibration requires correspondences for every image");
+
   // Prepare data structure for the camera parameters to optimize
   std::array<double, CalibCameraIntrinsics<double>::size()> internal_intrinsics_data;
   for (int i = 0; i < 9; ++i)

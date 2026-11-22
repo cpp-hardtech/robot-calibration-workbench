@@ -1,10 +1,22 @@
 #include <gtest/gtest.h>
+#include <calibration_workbench/optimizations/camera_intrinsic.h>
 #include <calibration_workbench/analysis/camera_intrinsic_calibration_analysis.h>
 #include <calibration_workbench_tests/utilities.h>
 #include <calibration_workbench_tests/observation_creator.h>
 #include <memory>
 
 using namespace calibration_workbench;
+
+TEST(CameraIntrinsicCalibrationValidation, RejectsEmptyImageObservations)
+{
+  CameraIntrinsicProblem problem{};
+  EXPECT_THROW(optimize(problem), OptimizationException);
+
+  problem.image_observations.resize(1);
+  problem.extrinsic_guesses.push_back(Eigen::Isometry3d::Identity());
+  problem.use_extrinsic_guesses = true;
+  EXPECT_THROW(optimize(problem), OptimizationException);
+}
 
 TEST(CameraIntrinsicCalibrationValidation, MeasureVirtualTargetDiff)
 {
