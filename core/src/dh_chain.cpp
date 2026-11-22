@@ -53,6 +53,9 @@ DHChain::DHChain(std::vector<DHTransform> transforms, const Eigen::Isometry3d& b
 
 DHChain::DHChain(const DHChain& other, const Eigen::MatrixX4d& dh_offsets)
 {
+  if (dh_offsets.rows() < static_cast<Eigen::Index>(other.dof()))
+    throw ICalException("DH offsets require at least one row per joint");
+
   transforms_.reserve(other.transforms_.size());
   for (std::size_t i = 0; i < other.transforms_.size(); ++i)
   {
