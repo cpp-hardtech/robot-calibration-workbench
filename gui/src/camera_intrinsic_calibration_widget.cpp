@@ -230,7 +230,7 @@ void CameraIntrinsicCalibrationWidget::loadConfig(const std::string& config_file
 
   // Configure the GUI
   target_finder_widget_->configure(target_finder_config);
-  camera_intrinsics_widget_->configure(intrinsics_config);
+  camera_intrinsics_widget_->configureFromConfig(intrinsics_config, config_file);
   ui_->double_spin_box_homography_threshold->setValue(homography_threshold);
   action_use_extrinsic_guesses->setChecked(use_extrinsic_guesses);
 
