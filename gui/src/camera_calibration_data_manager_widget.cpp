@@ -18,6 +18,8 @@
 #include <QMessageBox>
 #include <QPixmap>
 #include <QScrollBar>
+#include <QSaveFile>
+#include <QTextStream>
 #include <QVBoxLayout>
 #include <memory>
 #include <utility>
@@ -193,6 +195,62 @@ void CameraCalibrationDataManagerWidget::loadObservations(const std::string& obs
     ui_->tree_widget_observations->addTopLevelItem(item.release());
 
   ui_->tree_widget_observations->resizeColumnToContents(0);
+}
+
+QAction* CameraCalibrationDataManagerWidget::createObservationReportAction()
+{
+  auto action = new QAction("Export observation report...", this);
+  connect(action, &QAction::triggered, this, &CameraCalibrationDataManagerWidget::onSaveObservationReport);
+  return action;
+}
+
+void CameraCalibrationDataManagerWidget::onSaveObservationReport()
+{
+  try
+  {
+    const QString file =
+        QFileDialog::getSaveFileName(this, "Export observation report", QString(), "CSV files (*.csv)");
+    if (!file.isEmpty())
+      saveObservationReport(file.toStdString());
+  }
+  catch (const std::exception& ex)
+  {
+    QMessageBox::warning(this, "Error", ex.what());
+  }
+}
+
+void CameraCalibrationDataManagerWidget::saveObservationReport(const std::string& file) const
+{
+  const auto tree = ui_->tree_widget_observations;
+  if (tree->topLevelItemCount() == 0)
+    throw ICalException("No observations have been added");
+
+  QSaveFile output(QString::fromStdString(file));
+  if (!output.open(QIODevice::WriteOnly | QIODevice::Text))
+    throw ICalException("Failed to open observation report: '" + file + "'");
+
+  const auto escape = [](QString field) {
+    field.replace(QLatin1Char('"'), QStringLiteral("\"\""));
+    return QLatin1Char('"') + field + QLatin1Char('"');
+  };
+
+  QTextStream stream(&output);
+  stream.setCodec("UTF-8");
+  stream << "image_path,pose_path,feature_count,homography_error_px,status\n";
+  for (int i = 0; i < tree->topLevelItemCount(); ++i)
+  {
+    const auto item = tree->topLevelItem(i);
+    const QString feature_count = item->child(IDX_FEATURES)->text(1);
+    const QString homography_error = item->child(IDX_HOMOGRAPHY)->text(1);
+    stream << escape(item->data(0, IMAGE_FILE_NAME_ROLE).toString()) << ','
+           << escape(item->data(0, POSE_FILE_NAME_ROLE).toString()) << ','
+           << (feature_count == "-" ? QString() : feature_count) << ','
+           << (homography_error == "-" ? QString() : homography_error) << ',' << escape(item->text(1)) << '\n';
+  }
+
+  stream.flush();
+  if (stream.status() != QTextStream::Ok || !output.commit())
+    throw ICalException("Failed to write observation report: '" + file + "'");
 }
 
 void CameraCalibrationDataManagerWidget::drawImage(QTreeWidgetItem* item, int col)

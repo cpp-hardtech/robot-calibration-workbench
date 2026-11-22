@@ -77,6 +77,7 @@ int main(int argc, char** argv)
     menu_file->addAction(cal->action_load_observations);
     menu_file->addAction(cal->action_load_configuration);
     menu_file->addAction(cal->action_save);
+    menu_file->addAction(cal->createObservationReportAction());
   }
   {
     QMenu* menu_edit = window->menuBar()->addMenu("Edit");

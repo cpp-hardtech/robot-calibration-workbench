@@ -55,6 +55,12 @@ public:
    */
   void loadObservations(const std::string& observations_file);
 
+  /** @brief Saves the displayed observation paths and quality diagnostics as CSV. */
+  void saveObservationReport(const std::string& file) const;
+
+  /** @brief Creates an action that exports the observation report. */
+  QAction* createObservationReportAction();
+
   QAction* action_load_observations;
   QAction* action_edit_target_finder;
   QAction* action_edit_camera_intrinsics;
@@ -92,6 +98,7 @@ protected:
   void closeEvent(QCloseEvent* event) override;
 
   void onLoadObservations();
+  void onSaveObservationReport();
   void loadTargetFinder();
   void drawImage(QTreeWidgetItem* item, int col);
 

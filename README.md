@@ -115,6 +115,12 @@ detected features.
 - [Camera intrinsic calibration](docs/page_camera_intrinsic_calibration.dox)
 - [Extrinsic hand-eye calibration](docs/page_extrinsic_hand_eye_calibration.dox)
 
+## Export observation quality
+
+In either calibration application, choose **File → Export observation report** to save the
+current observations as CSV. The report includes image and pose paths, detected feature
+counts, homography errors in pixels, and the status shown for each observation.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).

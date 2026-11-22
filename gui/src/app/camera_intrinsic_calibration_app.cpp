@@ -79,6 +79,7 @@ int main(int argc, char** argv)
     menu_file->addSeparator();
     menu_file->addAction(cal->action_save);
     menu_file->addAction(cal->action_save_ros_format);
+    menu_file->addAction(cal->createObservationReportAction());
   }
   {
     QMenu* menu_edit = window->menuBar()->addMenu("Edit");
