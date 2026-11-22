@@ -27,6 +27,20 @@ ship with the repository, so the examples run without a robot or a camera.
 | `gui/` | Qt applications for camera intrinsic and hand-eye calibration. |
 | `examples/` | Runnable examples, including a hand-eye workflow on bundled data. |
 
+## Checkerboard target
+
+Use this target finder with a plain checkerboard in a camera calibration dataset. Specify
+the number of inner corners across each dimension and the spacing between corners in meters.
+Use images in which the complete checkerboard is visible.
+
+```yaml
+target_finder:
+  type: ChessboardGridTargetFinder
+  rows: 5
+  cols: 7
+  spacing: 0.03
+```
+
 ## Requirements
 
 - Linux with a C++17-capable toolchain and CMake.
@@ -69,20 +83,6 @@ analysis statistics, and displays the target points reprojected into the input i
 The bundled data is enough to run it without hardware. See
 [examples/extrinsic_hand_eye.cpp](examples/extrinsic_hand_eye.cpp) for the source and
 [examples/data/](examples/data/) for the datasets.
-
-## Checkerboard target
-
-Use this target finder with a plain checkerboard in a camera calibration dataset. Specify
-the number of inner corners across each dimension and the spacing between corners in meters.
-Use images in which the complete checkerboard is visible.
-
-```yaml
-target_finder:
-  type: ChessboardGridTargetFinder
-  rows: 5
-  cols: 7
-  spacing: 0.03
-```
 
 ## Docker
 
