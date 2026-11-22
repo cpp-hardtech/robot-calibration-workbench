@@ -22,16 +22,16 @@ Eigen::Vector3d computeLinePlaneIntersection(const Eigen::Vector3d& plane_normal
                                              const double epsilon = 1.0e-6);
 
 /**
- * @brief Projects a set of 2D source points (e.g., from an image observation) onto a 3D plane (e.g., a flat calibration
- * target)
- * @param source Set of 2D points
- * @param source_to_plane Matrix that transforms the source points into the frame of the plane (e.g., camera to target
- * transform)
- * @param k 3x3 camera projection matrix
- * @return
+ * @brief Backprojects image points onto the plane of a flat calibration target
+ * @param source Pixel coordinates in the image
+ * @param target_in_camera Pose of the target in the camera frame, transforming target points to camera coordinates
+ * @param k 3x3 camera intrinsic matrix
+ * @return Intersections in target coordinates. An empty input returns an empty matrix.
+ * @throws ICalException for a non-finite or singular camera matrix, or an intersection outside the finite forward ray
+ * @throws std::runtime_error if an image ray is parallel to the target plane
  * @ingroup analysis_projection
  */
-Eigen::MatrixX3d project3D(const Eigen::MatrixX2d& source, const Eigen::Isometry3d& source_to_plane,
+Eigen::MatrixX3d project3D(const Eigen::MatrixX2d& source, const Eigen::Isometry3d& target_in_camera,
                            const Eigen::Matrix3d& k);
 
 /**

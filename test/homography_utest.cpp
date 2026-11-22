@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
+#include <limits>
 #include <random>
 #include <calibration_workbench/analysis/homography_analysis.h>
+#include <calibration_workbench/analysis/projection.h>
 #include <calibration_workbench/core/utils.h>
 #include <calibration_workbench_tests/observation_creator.h>
 #include <calibration_workbench_tests/utilities.h>
@@ -103,6 +105,74 @@ TEST(Homography, RejectsCollinearCorrespondences)
     correspondences.emplace_back(Eigen::Vector2d(index, 1), Eigen::Vector3d(index, 0, 0));
 
   EXPECT_THROW(calculateHomography(correspondences), ICalException);
+}
+
+TEST(CameraBackprojection, RejectsMirroredPlaneBehindCamera)
+{
+  const CameraIntrinsics intrinsics{ { 600.0, 610.0, 320.0, 240.0 } };
+  const Eigen::Isometry3d identity = Eigen::Isometry3d::Identity();
+  Eigen::Isometry3d front = identity;
+  front.translate(Eigen::Vector3d(0.04, -0.02, 0.85));
+  front.rotate(Eigen::AngleAxisd(0.35, Eigen::Vector3d::UnitY()));
+
+  Eigen::Isometry3d behind = identity;
+  behind.linear() = front.linear() * Eigen::Vector3d(-1.0, -1.0, 1.0).asDiagonal();
+  behind.translation() = -front.translation();
+
+  Observation2D3D observation;
+  observation.to_camera_mount = identity;
+  observation.to_target_mount = front;
+  for (int row = 0; row < 2; ++row)
+    for (int col = 0; col < 3; ++col)
+    {
+      const Eigen::Vector3d target_point(0.025 * col, 0.025 * row, 0.0);
+      const Eigen::Vector3d front_point = front * target_point;
+      const Eigen::Vector3d behind_point = behind * target_point;
+      const Eigen::Vector2d pixel = projectPoint(intrinsics, front_point);
+      ASSERT_GT(front_point.z(), 0.0);
+      ASSERT_LT(behind_point.z(), 0.0);
+      ASSERT_TRUE(pixel.isApprox(projectPoint(intrinsics, behind_point)));
+      observation.correspondence_set.emplace_back(pixel, target_point);
+    }
+
+  const auto errors = compute3DProjectionError(observation, intrinsics, identity, identity);
+  ASSERT_EQ(errors.size(), 6);
+  EXPECT_LT(errors.maxCoeff(), 1e-12);
+
+  observation.to_target_mount = behind;
+  EXPECT_THROW(compute3DProjectionError(observation, intrinsics, identity, identity), ICalException);
+}
+
+TEST(CameraBackprojection, RejectsInvalidCameraMatrixForNonemptyInput)
+{
+  Eigen::MatrixX2d pixels(1, 2);
+  pixels << 320.0, 240.0;
+  Eigen::Isometry3d target_in_camera = Eigen::Isometry3d::Identity();
+  target_in_camera.translation().z() = 1.0;
+
+  Eigen::Matrix3d calibration;
+  calibration << 0.0, 0.0, 320.0, 0.0, 610.0, 240.0, 0.0, 0.0, 1.0;
+  EXPECT_THROW(project3D(pixels, target_in_camera, calibration), ICalException);
+
+  calibration(0, 0) = std::numeric_limits<double>::infinity();
+  EXPECT_THROW(project3D(pixels, target_in_camera, calibration), ICalException);
+
+  const Eigen::MatrixX2d empty_pixels(0, 2);
+  const auto empty_result = project3D(empty_pixels, target_in_camera, calibration);
+  EXPECT_EQ(empty_result.rows(), 0);
+  EXPECT_EQ(empty_result.cols(), 3);
+}
+
+TEST(CameraBackprojection, KeepsBidirectionalLineIntersectionAndRejectsCameraOrigin)
+{
+  const Eigen::Vector3d behind_point(0.0, 0.0, -2.0);
+  const auto intersection = computeLinePlaneIntersection(Eigen::Vector3d::UnitZ(), behind_point,
+                                                         Eigen::Vector3d::UnitZ(), Eigen::Vector3d::Zero());
+  EXPECT_TRUE(intersection.isApprox(behind_point));
+
+  Eigen::MatrixX2d pixel(1, 2);
+  pixel.setZero();
+  EXPECT_THROW(project3D(pixel, Eigen::Isometry3d::Identity(), Eigen::Matrix3d::Identity()), ICalException);
 }
 
 int main(int argc, char** argv)
