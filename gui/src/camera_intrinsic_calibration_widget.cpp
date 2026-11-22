@@ -312,9 +312,9 @@ void CameraIntrinsicCalibrationWidget::calibrate()
     try
     {
       cv::Mat image = readImageOpenCV(image_file.toStdString());
-      const Eigen::Isometry3d pose = problem.use_extrinsic_guesses
-                                        ? YAML::LoadFile(pose_file.toStdString()).as<Eigen::Isometry3d>()
-                                        : Eigen::Isometry3d::Identity();
+      const Eigen::Isometry3d pose = problem.use_extrinsic_guesses ?
+                                         YAML::LoadFile(pose_file.toStdString()).as<Eigen::Isometry3d>() :
+                                         Eigen::Isometry3d::Identity();
 
       if (i == 0)
         image_size = image.size();
