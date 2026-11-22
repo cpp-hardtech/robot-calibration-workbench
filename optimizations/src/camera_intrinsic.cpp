@@ -6,7 +6,11 @@
 #include <calibration_workbench/core/exceptions.h>
 #include <calibration_workbench/core/serialization.h>
 
+#include <cmath>
+
 #include <ceres/ceres.h>
+
+#include <algorithm>
 
 namespace calibration_workbench
 {
@@ -32,6 +36,40 @@ static Pose6d guessInitialPose()
   Eigen::Isometry3d guess = Eigen::Isometry3d::Identity();
   guess = guess * Eigen::Translation3d(0, 0, 0.5) * Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitX());
   return poseEigenToCal(guess);
+}
+
+ROSCameraCalibration fromROSFormat(const YAML::Node& node)
+{
+  ROSCameraCalibration result{};
+  result.camera_name = getMember<std::string>(node, "camera_name");
+  result.image_width = getMember<int>(node, "image_width");
+  result.image_height = getMember<int>(node, "image_height");
+  if (result.image_width <= 0 || result.image_height <= 0)
+    throw BadFileException("ROS camera calibration requires positive image dimensions");
+
+  const YAML::Node camera_matrix = node["camera_matrix"];
+  if (getMember<int>(camera_matrix, "rows") != 3 || getMember<int>(camera_matrix, "cols") != 3)
+    throw BadFileException("ROS camera_matrix must be 3 x 3");
+
+  const auto k = getMember<std::array<double, 9>>(camera_matrix, "data");
+  const auto finite = [](double value) { return std::isfinite(value); };
+  if (!std::all_of(k.begin(), k.end(), finite) || k[0] <= 0.0 || k[4] <= 0.0 || k[1] != 0.0 || k[3] != 0.0 ||
+      k[6] != 0.0 || k[7] != 0.0 || k[8] != 1.0)
+    throw BadFileException("Invalid ROS pinhole camera matrix");
+
+  result.intrinsics = CameraIntrinsics{ { k[0], k[4], k[2], k[5] } };
+
+  if (getMember<std::string>(node, "distortion_model") != "plumb_bob")
+    throw BadFileException("ROS camera calibration requires the plumb_bob distortion model");
+
+  const YAML::Node distortion = node["distortion_coefficients"];
+  if (getMember<int>(distortion, "rows") != 1 || getMember<int>(distortion, "cols") != 5)
+    throw BadFileException("ROS plumb_bob distortion_coefficients must be 1 x 5");
+
+  result.distortions = getMember<std::array<double, 5>>(distortion, "data");
+  if (!std::all_of(result.distortions.begin(), result.distortions.end(), finite))
+    throw BadFileException("ROS distortion coefficients must be finite");
+  return result;
 }
 
 YAML::Node toROSFormat(const CameraIntrinsicResult& result, const int image_width, const int image_height)

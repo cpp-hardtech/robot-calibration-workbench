@@ -53,6 +53,13 @@ The GUI applications and the examples are controlled by
 `CMakeLists.txt`; both default to `ON`. Testing and clang-tidy are behind
 `CALIBRATION_WORKBENCH_ENABLE_TESTING` and `CALIBRATION_WORKBENCH_ENABLE_CLANG_TIDY`.
 
+### ROS camera calibration YAML
+
+Use `calibration_workbench::fromROSFormat(YAML::LoadFile(path))` from
+`calibration_workbench/optimizations/camera_intrinsic.h` to load a ROS pinhole camera calibration with
+`plumb_bob` distortion. The result contains the camera name, image dimensions, intrinsics, and distortion
+coefficients.
+
 ## Run the hand-eye example
 
 The example needs a graphical session. Keep the source checkout in place, because the example

@@ -43,6 +43,24 @@ struct CameraIntrinsicResult
 std::ostream& operator<<(std::ostream& stream, const CameraIntrinsicResult& result);
 
 /**
+ * @brief Intrinsic camera parameters from a ROS camera calibration YAML document
+ */
+struct ROSCameraCalibration
+{
+  std::string camera_name;
+  int image_width;
+  int image_height;
+  CameraIntrinsics intrinsics;
+  std::array<double, 5> distortions;
+};
+
+/**
+ * @brief Reads the image size, camera name, pinhole intrinsics, and plumb_bob distortion coefficients
+ * @throws BadFileException for malformed data or unsupported camera models
+ */
+ROSCameraCalibration fromROSFormat(const YAML::Node& node);
+
+/**
  * @brief Saves the calibration results to a YAML file in a format compatible with ROS
  * @details Format definition https://wiki.ros.org/camera_calibration_parsers#File_formats
  * @throws Exception on failure
