@@ -14,6 +14,28 @@ target_compile_definitions(${PROJECT_NAME}_test_support PUBLIC RANDOM_SEED=0)
 
 # The actual tests...
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET ${PROJECT_NAME}_camera_intrinsic_calibration_app)
+  set(intrinsic_app ${PROJECT_NAME}_camera_intrinsic_calibration_app)
+  set(rms_check ${PROJECT_NAME}_intrinsic_reprojection_rms_check)
+  set(plugin_target ${PROJECT_NAME}_plugins_opencv)
+  add_executable(${rms_check} intrinsic_reprojection_rms_check.cpp)
+  target_link_libraries(${rms_check} PRIVATE ${PROJECT_NAME}_optimizations)
+  add_dependencies(
+    run_tests
+    ${intrinsic_app}
+    ${rms_check}
+    ${plugin_target})
+  add_test(
+    NAME HeadlessCalibration.IntrinsicReprojectionRMS
+    COMMAND
+      "${CMAKE_COMMAND}" "-DINTRINSIC_APP=$<TARGET_FILE:${intrinsic_app}>" "-DRMS_CHECK=$<TARGET_FILE:${rms_check}>"
+      "-DPLUGIN_DIR=$<TARGET_FILE_DIR:${plugin_target}>"
+      "-DSAMPLE_DIR=${PROJECT_SOURCE_DIR}/examples/data/test_set_10x10"
+      "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/intrinsic_reprojection_rms" -P
+      "${CMAKE_CURRENT_SOURCE_DIR}/intrinsic_reprojection_rms.cmake")
+  set_tests_properties(HeadlessCalibration.IntrinsicReprojectionRMS PROPERTIES TIMEOUT 30)
+endif()
+
 # Conversions
 add_executable(${PROJECT_NAME}_conversion_tests conversion_utest.cpp)
 target_link_libraries(${PROJECT_NAME}_conversion_tests PRIVATE ${PROJECT_NAME}_test_support GTest::GTest GTest::Main)
