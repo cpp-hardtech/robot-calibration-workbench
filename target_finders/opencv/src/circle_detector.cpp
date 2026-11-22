@@ -358,9 +358,11 @@ std::vector<cv::KeyPoint> detectKeyPoints(const std::vector<std::vector<CircleDe
 
 CircleDetector::CircleDetector(const CircleDetectorParams& parameters) : params(parameters) {}
 
-void CircleDetector::detect(cv::InputArray input, std::vector<cv::KeyPoint>& keypoints, cv::InputArray)
+void CircleDetector::detect(cv::InputArray input, std::vector<cv::KeyPoint>& keypoints, cv::InputArray mask)
 {
   cv::Mat image = input.getMat();
+  const cv::Mat mask_image = mask.getMat();
+  CV_Assert(mask_image.empty() || (mask_image.type() == CV_8UC1 && mask_image.size() == image.size()));
   cv::Mat grayscale_image;
 
   if (image.channels() == 3)
@@ -381,6 +383,7 @@ void CircleDetector::detect(cv::InputArray input, std::vector<cv::KeyPoint>& key
 
   // Use the circle centers to detect the key points
   keypoints = detectKeyPoints(centers, params);
+  cv::KeyPointsFilter::runByPixelsMask(keypoints, mask_image);
 }
 
 cv::Mat CircleDetector::drawDetectedCircles(const cv::Mat& image)
