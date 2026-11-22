@@ -58,6 +58,17 @@ target_link_libraries(
 target_compile_definitions(${PROJECT_NAME}_pnp PRIVATE EXAMPLE_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data")
 target_cxx_version(${PROJECT_NAME}_pnp PUBLIC VERSION 17)
 
+add_executable(${PROJECT_NAME}_estimate_target_pose estimate_target_pose.cpp)
+target_link_libraries(
+  ${PROJECT_NAME}_estimate_target_pose
+  PRIVATE ${PROJECT_NAME}_optimizations
+          ${PROJECT_NAME}_target_finders_opencv
+          opencv_calib3d
+          boost_plugin_loader::boost_plugin_loader)
+target_cxx_version(${PROJECT_NAME}_estimate_target_pose PRIVATE VERSION 17)
+add_dependencies(${PROJECT_NAME}_estimate_target_pose ${PROJECT_NAME}_plugins_opencv)
+install(TARGETS ${PROJECT_NAME}_estimate_target_pose RUNTIME DESTINATION lib/${PROJECT_NAME} COMPONENT target_pose_cli)
+
 # Build unit tests from the examples
 if(${CALIBRATION_WORKBENCH_ENABLE_TESTING})
   find_gtest()
@@ -82,6 +93,17 @@ if(${CALIBRATION_WORKBENCH_ENABLE_TESTING})
       add_gtest_discover_tests(${target})
     endif()
   endfunction()
+
+  add_test(
+    NAME EstimateTargetPoseCli
+    COMMAND
+      ${CMAKE_COMMAND} "-DESTIMATE_POSE=$<TARGET_FILE:${PROJECT_NAME}_estimate_target_pose>"
+      "-DPLUGIN_DIRECTORY=$<TARGET_FILE_DIR:${PROJECT_NAME}_plugins_opencv>"
+      "-DSAMPLE_DIRECTORY=${CMAKE_CURRENT_SOURCE_DIR}/data/test_set_charuco"
+      "-DFEW_CORNERS_IMAGE=${PROJECT_SOURCE_DIR}/test/images/charuco_one_corner.jpg"
+      "-DTEST_DIRECTORY=${CMAKE_CURRENT_BINARY_DIR}/estimate-target-pose-test" -P
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_estimate_target_pose.cmake")
+  add_dependencies(run_tests ${PROJECT_NAME}_estimate_target_pose)
 
   # Camera intrinsic calibration
   add_plugin_example_tests(${PROJECT_NAME}_camera_intrinsic)
