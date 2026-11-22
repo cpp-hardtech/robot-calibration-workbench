@@ -202,11 +202,9 @@ CameraIntrinsicResult optimize(const CameraIntrinsicProblem& params)
     }
   }
 
-  // Add constraints on the lower bounds of the focal lengths and camera center
+  // Constrain the focal lengths to be non-negative.
   problem.SetParameterLowerBound(internal_intrinsics_data.data(), 0, 0.0);
   problem.SetParameterLowerBound(internal_intrinsics_data.data(), 1, 0.0);
-  problem.SetParameterLowerBound(internal_intrinsics_data.data(), 2, 0.0);
-  problem.SetParameterLowerBound(internal_intrinsics_data.data(), 3, 0.0);
 
   std::vector<const double*> param_blocks;
   std::map<const double*, std::vector<std::string>> param_labels;
@@ -280,7 +278,7 @@ Node convert<CameraIntrinsicProblem>::encode(const CameraIntrinsicProblem& rhs)
 {
   Node node;
 
-  node["intrisics_guess"] = rhs.intrinsics_guess;
+  node["intrinsics_guess"] = rhs.intrinsics_guess;
   node["image_observations"] = rhs.image_observations;
   node["extrinsic_guesses"] = rhs.extrinsic_guesses;
   node["use_extrinsic_guesses"] = rhs.use_extrinsic_guesses;
@@ -290,7 +288,10 @@ Node convert<CameraIntrinsicProblem>::encode(const CameraIntrinsicProblem& rhs)
 
 bool convert<CameraIntrinsicProblem>::decode(const Node& node, CameraIntrinsicProblem& rhs)
 {
-  rhs.intrinsics_guess = getMember<decltype(rhs.intrinsics_guess)>(node, "intrinsics_guess");
+  const char* intrinsics_key = "intrinsics_guess";
+  if (!node[intrinsics_key].IsDefined() && node["intrisics_guess"].IsDefined())
+    intrinsics_key = "intrisics_guess";
+  rhs.intrinsics_guess = getMember<decltype(rhs.intrinsics_guess)>(node, intrinsics_key);
   rhs.image_observations = getMember<decltype(rhs.image_observations)>(node, "image_observations");
   rhs.extrinsic_guesses = getMember<decltype(rhs.extrinsic_guesses)>(node, "extrinsic_guesses");
   rhs.use_extrinsic_guesses = getMember<decltype(rhs.use_extrinsic_guesses)>(node, "use_extrinsic_guesses");
