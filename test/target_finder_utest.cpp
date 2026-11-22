@@ -225,6 +225,25 @@ TEST_F(ArucoFinderTest, findTargetFeatures) { this->runTest(); }
 
 TEST_F(ArucoFinderPredefinedBoardTest, findTargetFeatures) { this->runTest(); }
 
+TEST(ArucoBoardMembershipTest, ignoresMarkersFromOutsideConfiguredBoard)
+{
+  constexpr int foreign_id = 100;
+  const ArucoGridTarget target(2, 2, 0.04f, 0.01f);
+  const ArucoGridBoardTargetFinder finder(target);
+  cv::Mat scene(260, 410, CV_8UC1, cv::Scalar(255));
+  cv::Mat board_image;
+  target.board->draw({ 240, 240 }, board_image, 20);
+  board_image.copyTo(scene(cv::Rect(10, 10, 240, 240)));
+  cv::Mat foreign_marker;
+  cv::aruco::drawMarker(target.board->dictionary, foreign_id, 100, foreign_marker);
+  foreign_marker.copyTo(scene(cv::Rect(275, 80, 100, 100)));
+
+  const auto features = finder.findTargetFeatures(scene);
+  ASSERT_EQ(features.size(), target.points.size());
+  EXPECT_EQ(features.count(foreign_id), 0);
+  EXPECT_EQ(target.createCorrespondences(features).size(), 4 * target.points.size());
+}
+
 int main(int argc, char** argv)
 {
   ::testing::InitGoogleTest(&argc, argv);

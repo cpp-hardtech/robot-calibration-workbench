@@ -96,14 +96,18 @@ TargetFeatures2D ArucoGridBoardTargetFinder::findTargetFeatures(const cv::Mat& i
 
   for (unsigned i = 0; i < marker_ids.size(); i++)
   {
-    std::vector<cv::Point2f> corner_pts = marker_corners[i];
+    const int marker_id = marker_ids[i];
+    if (target_.points.find(marker_id) == target_.points.end())
+      continue;
+
+    const auto& corner_pts = marker_corners[i];
     VectorEigenVector<2> obs_pts(4);
 
     for (unsigned j = 0; j < corner_pts.size(); j++)
     {
       obs_pts[j] = Eigen::Vector2d(corner_pts[j].x, corner_pts[j].y).cast<double>();
     }
-    map_ids_to_obs_corners.emplace(marker_ids[i], obs_pts);
+    map_ids_to_obs_corners.emplace(marker_id, obs_pts);
   }
   return map_ids_to_obs_corners;
 }
