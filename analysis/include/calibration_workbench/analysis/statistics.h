@@ -9,6 +9,7 @@ namespace calibration_workbench
 /**
  * @brief Computes the mean and sample standard deviation statistics of a set of values
  * @return a tuple of the mean and sample standard deviation
+ * @throws ICalException when fewer than two values are supplied
  * @ingroup analysis
  */
 std::tuple<double, double> computeStats(const std::vector<double>& values);
@@ -44,7 +45,8 @@ struct PnPNoiseStat
 };
 
 /**
- * @brief Computes the mean and standard deviation of a set of quaternions
+ * @brief Computes the mean and sample standard deviation of a set of quaternions
+ * @throws ICalException when fewer than two orientations are supplied
  * @param quaternions
  * @return
  * @ingroup analysis
@@ -53,6 +55,7 @@ QuaternionStats computeQuaternionStats(const std::vector<Eigen::Quaterniond>& qu
 
 /**
  * @brief Computes the mean of a set of quaternions
+ * @throws ICalException when there are no orientations
  * @details Mean quaternion is found using method described by Markley et al: Quaternion Averaging
  * https://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/20070017872.pdf
  *

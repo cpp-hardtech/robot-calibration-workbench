@@ -43,6 +43,9 @@ PnPNoiseStat qualifyNoise2D(const std::vector<PnPProblem>& params)
     }
   }
 
+  if (orientations.size() < 2)
+    throw ICalException("Noise qualification requires at least two converged PnP solutions");
+
   std::tie(output.p_stat.mean.x(), output.p_stat.stdev.x()) = computeStats(x_acc);
   std::tie(output.p_stat.mean.y(), output.p_stat.stdev.y()) = computeStats(y_acc);
   std::tie(output.p_stat.mean.z(), output.p_stat.stdev.z()) = computeStats(z_acc);
@@ -89,6 +92,9 @@ PnPNoiseStat qualifyNoise3D(const std::vector<PnPProblem3D>& params)
       orientations.push_back(Eigen::Quaterniond(result.camera_to_target.rotation()));
     }
   }
+
+  if (orientations.size() < 2)
+    throw ICalException("Noise qualification requires at least two converged PnP solutions");
 
   std::tie(output.p_stat.mean.x(), output.p_stat.stdev.x()) = computeStats(x_acc);
   std::tie(output.p_stat.mean.y(), output.p_stat.stdev.y()) = computeStats(y_acc);

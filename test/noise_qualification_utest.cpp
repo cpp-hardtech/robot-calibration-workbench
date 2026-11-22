@@ -1,6 +1,7 @@
 #include <calibration_workbench/analysis/noise_qualification.h>
 #include <calibration_workbench/optimizations/pnp.h>
 #include <calibration_workbench/optimizations/ceres_math_utilities.h>
+#include <calibration_workbench/core/exceptions.h>
 #include <calibration_workbench_tests/utilities.h>
 #include <calibration_workbench_tests/observation_creator.h>
 
@@ -13,6 +14,21 @@ static const unsigned TARGET_ROWS = 10;
 static const unsigned TARGET_COLS = 14;
 static const double SPACING = 0.025;
 static const double CAMERA_STANDOFF = 0.5;
+
+TEST(NoiseTest, ValidatesSampleStatisticsSizes)
+{
+  EXPECT_THROW(computeStats({}), ICalException);
+  EXPECT_THROW(computeStats({ 3.0 }), ICalException);
+  const auto [mean, sample_stdev] = computeStats({ 1.0, 3.0 });
+  EXPECT_DOUBLE_EQ(mean, 2.0);
+  EXPECT_DOUBLE_EQ(sample_stdev, std::sqrt(2.0));
+
+  const Eigen::Quaterniond orientation(Eigen::AngleAxisd(0.35, Eigen::Vector3d::UnitX()));
+  EXPECT_THROW(computeQuaternionMean({}), ICalException);
+  EXPECT_THROW(computeQuaternionStats({}), ICalException);
+  EXPECT_THROW(computeQuaternionStats({ orientation }), ICalException);
+  EXPECT_NEAR(computeQuaternionMean({ orientation }).angularDistance(orientation), 0.0, 1e-12);
+}
 
 TEST(NoiseTest, QuatMeanTest)
 {
@@ -83,6 +99,16 @@ public:
   Correspondence2D3D::Set correspondences;
   std::mt19937 mt_rand;
 };
+
+TEST_F(NoiseQualification2D, RejectsOneConvergedTrial)
+{
+  PnPProblem problem;
+  problem.camera_to_target_guess = target_to_camera.inverse();
+  problem.intr = camera.intr;
+  problem.correspondences = createCorrespondences();
+
+  EXPECT_THROW(qualifyNoise2D({ problem }), ICalException);
+}
 
 TEST_F(NoiseQualification2D, PerfectData)
 {
@@ -239,6 +265,15 @@ public:
   Eigen::Isometry3d target_to_camera;
   std::mt19937 mt_rand;
 };
+
+TEST_F(NoiseQualification3D, RejectsOneConvergedTrial)
+{
+  PnPProblem3D problem;
+  problem.camera_to_target_guess = target_to_camera.inverse();
+  problem.correspondences = createCorrespondences();
+
+  EXPECT_THROW(qualifyNoise3D({ problem }), ICalException);
+}
 
 TEST_F(NoiseQualification3D, PerfectData)
 {

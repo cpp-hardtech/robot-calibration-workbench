@@ -12,6 +12,7 @@ namespace calibration_workbench
  * Sensor noise can be understood by inspecting the returned standard
  * deviations.
  * @return Noise Statistics: a vector of means & std devs
+ * @throws ICalException when fewer than two PnP solutions converge
  * @ingroup analysis_noise_qualification
  */
 PnPNoiseStat qualifyNoise2D(const std::vector<PnPProblem>& params);
@@ -22,6 +23,7 @@ PnPNoiseStat qualifyNoise2D(const std::vector<PnPProblem>& params);
  * Sensor noise can be understood by inspecting the returned standard
  * deviations.
  * @return Noise Statiscics: a vector of standard deviations and the mean pos
+ * @throws ICalException when fewer than two PnP solutions converge
  * @ingroup analysis_noise_qualification
  */
 PnPNoiseStat qualifyNoise3D(const std::vector<PnPProblem3D>& params);

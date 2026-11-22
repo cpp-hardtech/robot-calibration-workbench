@@ -71,7 +71,8 @@ std::ostream& operator<<(std::ostream& stream, const IntrinsicCalibrationAccurac
  *       - Theoretically, this difference should be zero for a perfectly intrinsically calibrated camera
  *         that perfectly observed the target features
  *
- * @param observations - a set of calibration observations
+ * @param observations - at least two calibration observations
+ * @throws ICalException when fewer than two observations are supplied
  * @param intr - camera intrinsic parameters
  * @param camera_mount_to_camera - The transformation from the camera mount frame to the camera
  * @param target_mount_to_target - The transformation from the target mount frame to the target
