@@ -89,6 +89,28 @@ public:
   const ModifiedCircleGridTarget target;
 };
 
+TEST(CircleDetectorImageTest, detectsSameKeypointsInBgrAndBgraImages)
+{
+  const cv::Mat bgr = cv::imread(std::string(TEST_SUPPORT_DIR) + "modified_circle_grid_10x10_0.025.png");
+  ASSERT_FALSE(bgr.empty());
+  cv::Mat bgra;
+  cv::cvtColor(bgr, bgra, cv::COLOR_BGR2BGRA);
+  CircleDetector detector(CircleDetectorParams{});
+  std::vector<cv::KeyPoint> expected, actual;
+
+  detector.detect(bgr, expected);
+  detector.detect(bgra, actual);
+
+  ASSERT_FALSE(expected.empty());
+  ASSERT_EQ(actual.size(), expected.size());
+  for (std::size_t i = 0; i < expected.size(); ++i)
+  {
+    EXPECT_EQ(actual[i].pt, expected[i].pt);
+    EXPECT_EQ(actual[i].size, expected[i].size);
+  }
+  EXPECT_FALSE(detector.drawDetectedCircles(bgra).empty());
+}
+
 class CharucoFinderTest : public TargetFinderTestFixture
 {
 public:

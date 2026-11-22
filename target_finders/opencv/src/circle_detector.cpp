@@ -365,7 +365,7 @@ void CircleDetector::detect(cv::InputArray input, std::vector<cv::KeyPoint>& key
   CV_Assert(mask_image.empty() || (mask_image.type() == CV_8UC1 && mask_image.size() == image.size()));
   cv::Mat grayscale_image;
 
-  if (image.channels() == 3)
+  if (image.channels() == 3 || image.channels() == 4)
     cv::cvtColor(image, grayscale_image, cv::COLOR_BGR2GRAY);
   else
     grayscale_image = image;
@@ -389,7 +389,7 @@ void CircleDetector::detect(cv::InputArray input, std::vector<cv::KeyPoint>& key
 cv::Mat CircleDetector::drawDetectedCircles(const cv::Mat& image)
 {
   cv::Mat grayscale_image;
-  if (image.channels() == 3)
+  if (image.channels() == 3 || image.channels() == 4)
     cv::cvtColor(image, grayscale_image, cv::COLOR_BGR2GRAY);
   else
     grayscale_image = image;

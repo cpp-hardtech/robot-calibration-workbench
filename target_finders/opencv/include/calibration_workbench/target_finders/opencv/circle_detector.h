@@ -75,7 +75,7 @@ public:
   };
 
   /**
-   * @brief Detects circle keypoints in an image
+   * @brief Detects circle keypoints in a grayscale, BGR, or BGRA image
    * @param image
    * @param keypoints
    * @param mask
