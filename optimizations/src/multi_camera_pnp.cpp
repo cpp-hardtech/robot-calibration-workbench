@@ -2,6 +2,7 @@
 #include <calibration_workbench/optimizations/multi_camera_pnp_cost.h>
 #include <calibration_workbench/optimizations/ceres_math_utilities.h>
 #include <calibration_workbench/core/types.h>
+#include <calibration_workbench/core/exceptions.h>
 
 #include <ceres/ceres.h>
 
@@ -9,6 +10,10 @@ namespace calibration_workbench
 {
 MultiCameraPnPResult optimize(const MultiCameraPnPProblem& params)
 {
+  const auto camera_count = params.base_to_camera.size();
+  if (params.intr.size() != camera_count || params.image_observations.size() != camera_count)
+    throw OptimizationException("Multi-camera PnP requires intrinsics and an observation set for each camera");
+
   Pose6d internal_base_to_target = poseEigenToCal(params.base_to_target_guess);
 
   ceres::Problem problem;
