@@ -130,6 +130,17 @@ TEST_F(PnP2DTest, PerturbedInitialCondition)
   EXPECT_LT(residual_mean + 3 * residual_stdev, 1.0e-10);
 }
 
+TEST(MultiCameraPnP, RejectsEmptyObservations)
+{
+  MultiCameraPnPProblem problem;
+  problem.base_to_target_guess = Eigen::Isometry3d::Identity();
+  problem.base_to_camera.push_back(Eigen::Isometry3d::Identity());
+  problem.intr.push_back(test::makeKinectCamera().intr);
+  problem.image_observations.resize(1);
+
+  EXPECT_THROW(optimize(problem), OptimizationException);
+}
+
 TEST_F(PnP2DTest, BadIntrinsicParameters)
 {
   PnPProblem problem;

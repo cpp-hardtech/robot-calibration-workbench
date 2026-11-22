@@ -38,6 +38,9 @@ MultiCameraPnPResult optimize(const MultiCameraPnPProblem& params)
     }
   }  // end for each camera
 
+  if (problem.NumResidualBlocks() == 0)
+    throw OptimizationException("Multi-camera PnP requires at least one correspondence");
+
   ceres::Solver::Options options;
   ceres::Solver::Summary summary;
 
