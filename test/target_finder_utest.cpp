@@ -45,6 +45,20 @@ public:
     }
   }
 
+  void verifyOverlayPreservesInput()
+  {
+    const cv::Mat input = cv::imread(filename);
+    ASSERT_FALSE(input.empty());
+    const cv::Mat original = input.clone();
+    const auto features = finder->findTargetFeatures(input);
+    ASSERT_FALSE(features.empty());
+
+    const cv::Mat overlay = finder->drawTargetFeatures(input, features);
+
+    EXPECT_EQ(cv::norm(input, original, cv::NORM_INF), 0.0);
+    EXPECT_GT(cv::norm(overlay, original, cv::NORM_INF), 0.0);
+  }
+
   std::shared_ptr<TargetFinderOpenCV> finder;
   std::string filename;
   std::size_t n_expected_ids;
@@ -210,6 +224,12 @@ public:
 
   ArucoGridTarget target;
 };
+
+TEST_F(ModifiedCircleGridFinderTest, preservesOverlayInput) { this->verifyOverlayPreservesInput(); }
+
+TEST_F(CharucoFinderTest, preservesOverlayInput) { this->verifyOverlayPreservesInput(); }
+
+TEST_F(ArucoFinderTest, preservesOverlayInput) { this->verifyOverlayPreservesInput(); }
 
 TEST_F(ModifiedCircleGridFinderTest, findTargetFeatures) { this->runTest(); }
 
