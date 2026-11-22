@@ -1,6 +1,7 @@
 ﻿#include <calibration_workbench/optimizations/covariance_analysis.h>
 #include <calibration_workbench/core/exceptions.h>
 
+#include <algorithm>
 #include <sstream>
 
 namespace calibration_workbench
@@ -10,29 +11,22 @@ Eigen::MatrixXd computeCorrelationsFromCovariance(const Eigen::MatrixXd& covaria
   if (covariance_matrix.rows() != covariance_matrix.cols())
     throw CovarianceException("Cannot compute correlations from a non-square matrix");
 
-  Eigen::Index num_vars = covariance_matrix.rows();
-
+  const Eigen::Index num_vars = covariance_matrix.rows();
+  const Eigen::VectorXd standard_deviations = covariance_matrix.diagonal().cwiseAbs().cwiseSqrt();
   Eigen::MatrixXd out(num_vars, num_vars);
+  out.diagonal() = standard_deviations;
 
-  for (Eigen::Index i = 0; i < num_vars; i++)
+  for (Eigen::Index i = 0; i < num_vars; ++i)
   {
-    double sigma_i = sqrt(fabs(covariance_matrix(i, i)));  // standard deviation at the diagonal element in row i
-
-    for (Eigen::Index j = 0; j < num_vars; j++)
+    const double sigma_i = standard_deviations(i);
+    for (Eigen::Index j = 0; j < num_vars; ++j)
     {
-      double sigma_j = sqrt(fabs(covariance_matrix(j, j)));  // standard deviation at the diagonal element in column j
+      if (i == j)
+        continue;
 
-      if (i == j)  // if out(i,j) is a diagonal element
-        out(static_cast<Eigen::Index>(i), static_cast<Eigen::Index>(j)) = sigma_i;
-      else
-      {
-        if (sigma_i < std::numeric_limits<double>::epsilon())
-          sigma_i = 1;
-        if (sigma_j < std::numeric_limits<double>::epsilon())
-          sigma_j = 1;
-
-        out(static_cast<Eigen::Index>(i), static_cast<Eigen::Index>(j)) = covariance_matrix(i, j) / (sigma_i * sigma_j);
-      }
+      const double sigma_j = standard_deviations(j);
+      const auto [smaller, larger] = std::minmax(sigma_i, sigma_j);
+      out(i, j) = smaller == 0.0 ? 0.0 : (covariance_matrix(i, j) / smaller) / larger;
     }
   }
 
