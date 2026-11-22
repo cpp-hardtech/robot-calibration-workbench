@@ -145,7 +145,7 @@ struct convert<std::vector<T, Eigen::aligned_allocator<T>>>
 {
   static Node encode(const std::vector<T, Eigen::aligned_allocator<T>>& v)
   {
-    Node node;
+    Node node(NodeType::Sequence);
     for (const auto& elem : v)
       node.push_back(elem);
 
