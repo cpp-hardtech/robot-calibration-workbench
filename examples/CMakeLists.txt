@@ -65,9 +65,16 @@ if(${CALIBRATION_WORKBENCH_ENABLE_TESTING})
   function(add_plugin_example_tests target)
     set(plugin_target ${PROJECT_NAME}_plugins_opencv)
     add_dependencies(${target} ${plugin_target})
-    if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_VERSION VERSION_LESS "3.10")
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux"
+       AND NOT
+           CMAKE_VERSION
+           VERSION_LESS
+           "3.10")
       set(library_path "$<TARGET_FILE_DIR:${plugin_target}>")
-      if(NOT "$ENV{LD_LIBRARY_PATH}" STREQUAL "")
+      if(NOT
+         "$ENV{LD_LIBRARY_PATH}"
+         STREQUAL
+         "")
         string(APPEND library_path ":$ENV{LD_LIBRARY_PATH}")
       endif()
       gtest_discover_tests(${target} DISCOVERY_MODE PRE_TEST PROPERTIES ENVIRONMENT "LD_LIBRARY_PATH=${library_path}")
