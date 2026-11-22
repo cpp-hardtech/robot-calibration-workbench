@@ -152,6 +152,8 @@ void CameraCalibrationDataManagerWidget::onLoadObservations()
   }
 }
 
+bool CameraCalibrationDataManagerWidget::requiresObservationPose() const { return true; }
+
 void CameraCalibrationDataManagerWidget::loadObservations(const std::string& observations_file)
 {
   QFileInfo observations_file_info(QString::fromStdString(observations_file));
@@ -162,6 +164,7 @@ void CameraCalibrationDataManagerWidget::loadObservations(const std::string& obs
 
   std::vector<std::unique_ptr<QTreeWidgetItem>> items;
   items.reserve(observations.size());
+  const bool pose_required = requiresObservationPose();
 
   for (std::size_t i = 0; i < observations.size(); ++i)
   {
@@ -169,8 +172,10 @@ void CameraCalibrationDataManagerWidget::loadObservations(const std::string& obs
 
     QString image_file =
         observations_file_info.absoluteDir().filePath(QString::fromStdString(getMember<std::string>(entry, "image")));
-    QString pose_file =
-        observations_file_info.absoluteDir().filePath(QString::fromStdString(getMember<std::string>(entry, "pose")));
+    QString pose_file;
+    if (pose_required || entry["pose"].IsDefined())
+      pose_file =
+          observations_file_info.absoluteDir().filePath(QString::fromStdString(getMember<std::string>(entry, "pose")));
 
     auto item = std::make_unique<QTreeWidgetItem>();
     item->setData(0, Qt::EditRole, "Observation " + QString::number(i));

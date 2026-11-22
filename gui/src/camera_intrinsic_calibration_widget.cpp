@@ -271,6 +271,11 @@ void CameraIntrinsicCalibrationWidget::onCalibrate()
   }
 }
 
+bool CameraIntrinsicCalibrationWidget::requiresObservationPose() const
+{
+  return action_use_extrinsic_guesses->isChecked();
+}
+
 void CameraIntrinsicCalibrationWidget::calibrate()
 {
   // Check if there are any observations before continuing
@@ -285,7 +290,7 @@ void CameraIntrinsicCalibrationWidget::calibrate()
   problem.intrinsics_guess = camera_intrinsics_widget_->save().as<CameraIntrinsics>();
   problem.use_extrinsic_guesses = action_use_extrinsic_guesses->isChecked();
 
-  // Extract the image size for the OpenCV solver
+  // Image size of the first observation included in calibration
   cv::Size image_size;
 
   for (int i = 0; i < ui_->tree_widget_observations->topLevelItemCount(); ++i)
@@ -316,9 +321,6 @@ void CameraIntrinsicCalibrationWidget::calibrate()
                                          YAML::LoadFile(pose_file.toStdString()).as<Eigen::Isometry3d>() :
                                          Eigen::Isometry3d::Identity();
 
-      if (i == 0)
-        image_size = image.size();
-
       Correspondence2D3D::Set correspondence_set = target_finder_->findCorrespondences(image);
 
       // Calculate homography error
@@ -329,6 +331,9 @@ void CameraIntrinsicCalibrationWidget::calibrate()
       // Conditionally add the observation to the problem if the mean homography error is less than the threshold
       if (homography_error_mean < ui_->double_spin_box_homography_threshold->value())
       {
+        if (problem.image_observations.empty())
+          image_size = image.size();
+
         problem.image_observations.push_back(correspondence_set);
         if (problem.use_extrinsic_guesses)
           problem.extrinsic_guesses.push_back(pose);
@@ -351,12 +356,15 @@ void CameraIntrinsicCalibrationWidget::calibrate()
     }
   }
 
+  if (problem.image_observations.empty())
+    throw ICalException("No usable observations for calibration");
+
   // Solve the calibration problem
-  result_ = std::make_shared<CameraIntrinsicResult>();
   if (action_use_opencv->isChecked())
-    *result_ = optimizeOpenCV(problem, image_size);
+    result_ = std::make_shared<CameraIntrinsicResult>(optimizeOpenCV(problem, image_size));
   else
-    *result_ = optimize(problem);
+    result_ = std::make_shared<CameraIntrinsicResult>(optimize(problem));
+  result_image_size_ = image_size;
 
   // Perform analysis
   IntrinsicCalibrationAccuracyResult accuracy_result;
@@ -446,20 +454,7 @@ void CameraIntrinsicCalibrationWidget::saveROSFormat(const std::string& file) co
   if (result_ == nullptr)
     return;
 
-  // Image size
-  if (ui_->tree_widget_observations->topLevelItemCount() == 0)
-    throw ICalException("No observations have been added");
-
-  QTreeWidgetItem* item = ui_->tree_widget_observations->topLevelItem(0);
-  QString image_file = item->data(0, IMAGE_FILE_NAME_ROLE).value<QString>();
-  if (!QFile(image_file).exists())
-    throw ICalException("Image '" + image_file.toStdString() + "' does not exist");
-
-  cv::Mat image = readImageOpenCV(image_file.toStdString());
-  const int image_height = image.size[0];
-  const int image_width = image.size[1];
-
-  YAML::Node node = toROSFormat(*result_, image_width, image_height);
+  const YAML::Node node = toROSFormat(*result_, result_image_size_.width, result_image_size_.height);
   std::ofstream f(file);
   if (!f)
     throw ICalException("Failed to open file: '" + file + "' for writing");
