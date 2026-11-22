@@ -2,6 +2,7 @@
 #include <calibration_workbench/optimizations/camera_intrinsic.h>
 #include <calibration_workbench/analysis/camera_intrinsic_calibration_analysis.h>
 #include <calibration_workbench/core/serialization.h>
+#include <calibration_workbench/core/utils.h>
 #include <calibration_workbench_tests/utilities.h>
 #include <calibration_workbench_tests/observation_creator.h>
 #include <memory>
@@ -185,6 +186,60 @@ TEST(ROSCameraCalibration, RejectsUnsupportedOrMalformedCalibration)
 
   document["distortion_coefficients"]["data"].push_back(0.0);
   EXPECT_THROW(fromROSFormat(document), BadFileException);
+}
+
+TEST(CameraIntrinsicCalibrationValidation, CalibratesCroppedImageWithPrincipalPointOutsideCrop)
+{
+  const CameraIntrinsics full_image{ { 800.0, 810.0, 640.0, 360.0 } };
+  const Eigen::Vector2d crop_origin(690.0, 390.0);
+  const Eigen::Vector2d scale(0.8, 0.7);
+
+  CameraIntrinsicProblem problem{};
+  problem.intrinsics_guess =
+      full_image.remapImageCoordinates(scale.x(), scale.y(), -scale.x() * crop_origin.x(), -scale.y() * crop_origin.y());
+  problem.use_extrinsic_guesses = true;
+
+  for (int view = 0; view < 10; ++view)
+  {
+    Eigen::Isometry3d camera_to_target = Eigen::Isometry3d::Identity();
+    camera_to_target.translate(
+        Eigen::Vector3d(0.10 + 0.007 * (view % 5), 0.065 + 0.008 * (view % 3), 0.42 + 0.027 * (view % 4)));
+    camera_to_target.rotate(Eigen::AngleAxisd(0.10 * (view % 5 - 2), Eigen::Vector3d::UnitX()));
+    camera_to_target.rotate(Eigen::AngleAxisd(0.12 * (view % 4 - 1), Eigen::Vector3d::UnitY()));
+    problem.extrinsic_guesses.push_back(camera_to_target);
+
+    auto& observations = problem.image_observations.emplace_back();
+    for (int row = 0; row < 6; ++row)
+      for (int col = 0; col < 8; ++col)
+      {
+        const Eigen::Vector3d target_point(0.025 * col, 0.025 * row, 0.0);
+        const Eigen::Vector3d camera_point = camera_to_target * target_point;
+        const Eigen::Vector2d full_pixel = projectPoint(full_image, camera_point);
+        observations.emplace_back((full_pixel - crop_origin).cwiseProduct(scale), target_point);
+      }
+  }
+
+  const auto result = optimize(problem);
+
+  EXPECT_TRUE(result.converged);
+  EXPECT_NEAR(result.intrinsics.cx(), -40.0, 1e-8);
+  EXPECT_NEAR(result.intrinsics.cy(), -21.0, 1e-8);
+  EXPECT_LT(result.final_cost_per_obs, 1e-18);
+}
+
+TEST(CameraIntrinsicCalibrationValidation, RoundTripsIntrinsicProblemAndLoadsLegacyKey)
+{
+  CameraIntrinsicProblem problem{};
+  problem.intrinsics_guess = CameraIntrinsics{ { 640.0, 567.0, -40.0, -21.0 } };
+  YAML::Node document = YAML::Load(YAML::Dump(YAML::Node(problem)));
+
+  ASSERT_TRUE(document["intrinsics_guess"].IsDefined());
+  EXPECT_FALSE(document["intrisics_guess"].IsDefined());
+  EXPECT_EQ(document.as<CameraIntrinsicProblem>().intrinsics_guess, problem.intrinsics_guess);
+
+  document["intrisics_guess"] = YAML::Clone(document["intrinsics_guess"]);
+  document.remove("intrinsics_guess");
+  EXPECT_EQ(document.as<CameraIntrinsicProblem>().intrinsics_guess, problem.intrinsics_guess);
 }
 
 int main(int argc, char** argv)

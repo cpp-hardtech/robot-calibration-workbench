@@ -23,6 +23,13 @@ struct CameraIntrinsics
   const double& cx() const { return values[2]; }
   const double& cy() const { return values[3]; }
 
+  /**
+   * @brief Returns intrinsics for the pixel transform (scale_x * x + offset_x, scale_y * y + offset_y)
+   * @throws ICalException for non-finite values or non-positive scales
+   */
+  CameraIntrinsics remapImageCoordinates(double scale_x, double scale_y, double offset_x = 0.0,
+                                         double offset_y = 0.0) const;
+
   inline bool operator==(const CameraIntrinsics& rhs) const { return values == rhs.values; }
 };
 std::ostream& operator<<(std::ostream& stream, const CameraIntrinsics& intr);

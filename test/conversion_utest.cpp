@@ -1,5 +1,9 @@
 #include <gtest/gtest.h>
 #include <calibration_workbench/optimizations/ceres_math_utilities.h>
+#include <calibration_workbench/core/exceptions.h>
+#include <calibration_workbench/core/utils.h>
+
+#include <limits>
 
 using namespace calibration_workbench;
 
@@ -24,6 +28,27 @@ TEST(EigenConversions, there_and_back)
 
   const Eigen::Matrix4d diff = e_pose.matrix() - recovered_e_pose.matrix();
   EXPECT_TRUE(diff.isZero());
+}
+
+TEST(CameraIntrinsics, RemapsProjectionToCroppedAndResizedImage)
+{
+  const CameraIntrinsics original{ { 800.0, 820.0, 640.0, 360.0 } };
+  const Eigen::Vector3d point_in_camera(0.2, -0.1, 2.0);
+
+  const auto remapped = original.remapImageCoordinates(0.5, 0.75, -60.0, -45.0);
+  const Eigen::Vector2d pixel = projectPoint(remapped, point_in_camera);
+
+  EXPECT_DOUBLE_EQ(pixel.x(), 300.0);
+  EXPECT_DOUBLE_EQ(pixel.y(), 194.25);
+}
+
+TEST(CameraIntrinsics, RejectsInvalidCoordinateRemapping)
+{
+  const CameraIntrinsics intrinsics{ { 800.0, 820.0, 640.0, 360.0 } };
+  const double infinity = std::numeric_limits<double>::infinity();
+
+  EXPECT_THROW(intrinsics.remapImageCoordinates(0.0, 1.0), ICalException);
+  EXPECT_THROW(intrinsics.remapImageCoordinates(1.0, 1.0, infinity), ICalException);
 }
 
 int main(int argc, char** argv)

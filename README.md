@@ -74,6 +74,12 @@ Use `calibration_workbench::fromROSFormat(YAML::LoadFile(path))` from
 `plumb_bob` distortion. The result contains the camera name, image dimensions, intrinsics, and distortion
 coefficients.
 
+### Camera intrinsics after cropping or resizing
+
+`CameraIntrinsics::remapImageCoordinates` returns calibration parameters in the new image coordinates.
+For an image cropped at `(left, top)` and then resized, pass
+`(scale_x, scale_y, -scale_x * left, -scale_y * top)`. The principal point can lie outside the cropped image.
+
 ## Run the hand-eye example
 
 The example needs a graphical session. Keep the source checkout in place, because the example
