@@ -304,10 +304,7 @@ void ExtrinsicHandEyeCalibrationWidget::calibrate()
   ui_->text_edit_results->append(QString::fromStdString(ss.str()));
 }
 
-bool ExtrinsicHandEyeCalibrationWidget::calibrationConverged() const
-{
-  return result_ && result_->converged;
-}
+bool ExtrinsicHandEyeCalibrationWidget::calibrationConverged() const { return result_ && result_->converged; }
 
 void ExtrinsicHandEyeCalibrationWidget::onSaveResults()
 {

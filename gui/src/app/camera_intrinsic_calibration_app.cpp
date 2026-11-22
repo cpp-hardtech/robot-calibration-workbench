@@ -22,12 +22,13 @@ int main(int argc, char** argv)
   const bool headless = argc > 1 && std::string_view(argv[1]) == "--headless";
   if (headless && (argc < 5 || argc > 6))
   {
-    std::cerr << "Usage: calibration_workbench_camera_intrinsic_calibration_app --headless config.yaml observations.yaml results.yaml [ros-results.yaml]\n";
+    std::cerr << "Usage: calibration_workbench_camera_intrinsic_calibration_app --headless config.yaml "
+                 "observations.yaml results.yaml [ros-results.yaml]\n";
     return 1;
   }
 
   int qt_argc = 1;
-  char* qt_argv[] = {argv[0], nullptr};
+  char* qt_argv[] = { argv[0], nullptr };
   if (headless)
     qputenv("QT_QPA_PLATFORM", "offscreen");
   QApplication app(headless ? qt_argc : argc, headless ? qt_argv : argv);
