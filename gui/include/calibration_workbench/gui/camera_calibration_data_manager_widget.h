@@ -97,6 +97,9 @@ protected:
 
   void closeEvent(QCloseEvent* event) override;
 
+  /** @brief Returns whether an observation must specify a pose. */
+  virtual bool requiresObservationPose() const;
+
   void onLoadObservations();
   void onSaveObservationReport();
   void loadTargetFinder();

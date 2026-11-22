@@ -174,3 +174,24 @@ install(
   RUNTIME DESTINATION bin/tests
   LIBRARY DESTINATION lib/tests
   ARCHIVE DESTINATION lib/tests)
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET ${PROJECT_NAME}_camera_intrinsic_calibration_app
+   AND TARGET ${PROJECT_NAME}_extrinsic_hand_eye_calibration_app)
+  set(intrinsic_app ${PROJECT_NAME}_camera_intrinsic_calibration_app)
+  set(hand_eye_app ${PROJECT_NAME}_extrinsic_hand_eye_calibration_app)
+  set(plugin_target ${PROJECT_NAME}_plugins_opencv)
+  add_dependencies(
+    run_tests
+    ${intrinsic_app}
+    ${hand_eye_app}
+    ${plugin_target})
+  add_test(
+    NAME HeadlessCalibration.ObservationWorkflow
+    COMMAND
+      "${CMAKE_COMMAND}" "-DINTRINSIC_APP=$<TARGET_FILE:${intrinsic_app}>"
+      "-DHAND_EYE_APP=$<TARGET_FILE:${hand_eye_app}>" "-DPLUGIN_DIR=$<TARGET_FILE_DIR:${plugin_target}>"
+      "-DSAMPLE_DIR=${PROJECT_SOURCE_DIR}/examples/data/test_set_10x10"
+      "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/headless_calibration_workflow" -P
+      "${CMAKE_CURRENT_SOURCE_DIR}/headless_calibration_workflow.cmake")
+  set_tests_properties(HeadlessCalibration.ObservationWorkflow PROPERTIES TIMEOUT 30)
+endif()

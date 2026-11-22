@@ -1,6 +1,7 @@
 #pragma once
 
 #include <calibration_workbench/gui/camera_calibration_data_manager_widget.h>
+#include <opencv2/core/types.hpp>
 
 class QToolBar;
 
@@ -71,12 +72,16 @@ signals:
   void calibrationComplete(const CameraIntrinsicResult&);
 
 protected:
+  bool requiresObservationPose() const override;
   void onLoadConfig();
   void onCalibrate();
   void onSaveResults();
   void onSaveROSFormat();
 
   std::shared_ptr<CameraIntrinsicResult> result_;
+
+private:
+  cv::Size result_image_size_;
 };
 
 }  // namespace calibration_workbench

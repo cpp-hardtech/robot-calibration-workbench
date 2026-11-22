@@ -281,6 +281,9 @@ void ExtrinsicHandEyeCalibrationWidget::calibrate()
     }
   }
 
+  if (problem.observations.empty())
+    throw ICalException("No usable observations for calibration");
+
   // Solve the calibration problem
   result_ = std::make_shared<ExtrinsicHandEyeResult>();
   *result_ = optimize(problem);

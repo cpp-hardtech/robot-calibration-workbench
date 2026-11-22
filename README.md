@@ -95,11 +95,17 @@ The bundled data is enough to run it without hardware. See
 
 Start either calibration application with `--headless` followed by its configuration, observation,
 and result files. The camera intrinsic application also accepts an optional ROS YAML output file.
+Append `--observation-report report.csv` to either command to save the observation report alongside
+the calibration result. Use a separate path for the report.
 
 ```bash
 calibration_workbench_camera_intrinsic_calibration_app --headless config.yaml observations.yaml results.yaml ros-results.yaml
-calibration_workbench_extrinsic_hand_eye_calibration_app --headless config.yaml observations.yaml results.yaml
+calibration_workbench_extrinsic_hand_eye_calibration_app --headless config.yaml observations.yaml results.yaml --observation-report report.csv
 ```
+
+For intrinsic calibration, set `use_extrinsic_guesses: false` in the configuration file to use observations
+with an `image` entry and no `pose` entry. Hand-eye calibration and intrinsic calibration with extrinsic
+guesses require both files.
 
 The applications exit after saving a converged result and report calibration errors to standard error.
 

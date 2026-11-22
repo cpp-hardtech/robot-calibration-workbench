@@ -1,6 +1,8 @@
 #include <calibration_workbench/gui/camera_intrinsic_calibration_widget.h>
 #include <calibration_workbench/gui/aspect_ratio_pixmap_label.h>
 
+#include "headless_output_arguments.h"
+
 #include <filesystem>
 #include <iostream>
 #include <string_view>
@@ -20,10 +22,11 @@ void handleSignal(int /*sig*/) { QApplication::instance()->quit(); }
 int main(int argc, char** argv)
 {
   const bool headless = argc > 1 && std::string_view(argv[1]) == "--headless";
-  if (headless && (argc < 5 || argc > 6))
+  const auto output = headless ? calibration_workbench::parseHeadlessOutputArguments(argc, argv, 6) : std::nullopt;
+  if (headless && !output)
   {
     std::cerr << "Usage: calibration_workbench_camera_intrinsic_calibration_app --headless config.yaml "
-                 "observations.yaml results.yaml [ros-results.yaml]\n";
+                 "observations.yaml results.yaml [ros-results.yaml] [--observation-report report.csv]\n";
     return 1;
   }
 
@@ -108,6 +111,8 @@ int main(int argc, char** argv)
     try
     {
       const int first_file = headless ? 2 : 1;
+      if (output)
+        calibration_workbench::validateObservationReportPath(*output, argv);
       cal->loadConfig(argv[first_file]);
       cal->loadObservations(argv[first_file + 1]);
       cal->calibrate();
@@ -117,11 +122,15 @@ int main(int argc, char** argv)
         return 1;
       }
       cal->saveResults(argv[first_file + 2]);
-      if (argc > first_file + 3)
+      if ((output ? output->positional_argc : argc) > first_file + 3)
         cal->saveROSFormat(argv[first_file + 3]);
 
-      if (headless)
+      if (output)
+      {
+        if (output->observation_report)
+          cal->saveObservationReport(output->observation_report);
         return 0;
+      }
 
       QMessageBox::StandardButton ret = QMessageBox::question(nullptr, "Calibration",
                                                               "Successfully completed calibration and saved results. "
