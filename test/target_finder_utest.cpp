@@ -2,6 +2,7 @@
 // Implementations
 #include <calibration_workbench/target_finders/opencv/modified_circle_grid_target_finder.h>
 #include <calibration_workbench/target_finders/opencv/charuco_grid_target_finder.h>
+#include <calibration_workbench/target_finders/opencv/chessboard_grid_target_finder.h>
 #include <calibration_workbench/target_finders/opencv/aruco_grid_target_finder.h>
 // Analysis
 #include <calibration_workbench/analysis/homography_analysis.h>
@@ -13,6 +14,31 @@
 #include <opencv2/opencv.hpp>
 
 using namespace calibration_workbench;
+
+TEST(ChessboardGridFinderTest, createsPlanarCorrespondencesFromPrintedCheckerboard)
+{
+  constexpr int rows = 5;
+  constexpr int cols = 7;
+  constexpr int tile = 40;
+  constexpr double spacing = 0.03;
+  const ChessboardGridTargetFinder finder(ChessboardGridTarget(rows, cols, spacing));
+  cv::Mat image((rows + 3) * tile, (cols + 3) * tile, CV_8UC1, cv::Scalar(255));
+  for (int row = 0; row <= rows; ++row)
+    for (int col = 0; col <= cols; ++col)
+      if ((row + col) % 2 == 0)
+        image(cv::Rect((col + 1) * tile, (row + 1) * tile, tile, tile)).setTo(cv::Scalar(0));
+
+  const auto features = finder.findTargetFeatures(image);
+  ASSERT_EQ(features.size(), rows * cols);
+  const auto correspondences = finder.target().createCorrespondences(features);
+  ASSERT_EQ(correspondences.size(), rows * cols);
+  EXPECT_TRUE(correspondences.front().in_target.isApprox(Eigen::Vector3d::Zero()));
+  EXPECT_TRUE(
+      correspondences.back().in_target.isApprox(Eigen::Vector3d((cols - 1) * spacing, (rows - 1) * spacing, 0.0)));
+  EXPECT_NEAR((correspondences[1].in_image - correspondences[0].in_image).norm(), tile, 0.5);
+  const cv::Mat blank(image.size(), image.type(), cv::Scalar(255));
+  EXPECT_TRUE(finder.findTargetFeatures(blank).empty());
+}
 
 class TargetFinderTestFixture : public ::testing::Test
 {
