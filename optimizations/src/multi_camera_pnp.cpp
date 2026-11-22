@@ -2,6 +2,7 @@
 #include <calibration_workbench/optimizations/multi_camera_pnp_cost.h>
 #include <calibration_workbench/optimizations/ceres_math_utilities.h>
 #include <calibration_workbench/core/types.h>
+#include <calibration_workbench/core/exceptions.h>
 
 #include <ceres/ceres.h>
 
@@ -32,6 +33,9 @@ MultiCameraPnPResult optimize(const MultiCameraPnPProblem& params)
       problem.AddResidualBlock(cost_block, NULL, internal_base_to_target.values.data());
     }
   }  // end for each camera
+
+  if (problem.NumResidualBlocks() == 0)
+    throw OptimizationException("Multi-camera PnP requires at least one correspondence");
 
   ceres::Solver::Options options;
   ceres::Solver::Summary summary;
