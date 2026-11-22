@@ -152,6 +152,26 @@ the input files. Correspondence CSV columns are `image_x,image_y,target_x,target
 Image points are in pixels. Target points use the units defined in the target configuration.
 The command returns a nonzero status if detection fails or a requested output cannot be written.
 
+### Batch target diagnostics
+
+Pass `--batch` after the target configuration, followed by one or more image paths:
+
+```bash
+./install/calibration_workbench/lib/calibration_workbench/calibration_workbench_detect_target \
+  cal_data.yaml --batch 'frame "left", 01.png' 'frame right 02.png' > batch.csv
+```
+
+The CSV header is `image_path,status,feature_count,point_count`. Every input has one row,
+in argument order. Paths are quoted with embedded double quotes doubled. `feature_count`
+counts detected feature IDs and `point_count` counts all detected image points. Status is
+`detected`, `no_detection`, `unreadable`, or `detector_error`. A failed input has zero
+counts, and the command continues with the remaining inputs. Use `--overlay` and
+`--correspondences` in single-image mode.
+
+Exit status is `0` when every image has detections, `1` when any image fails or a configuration
+or output error occurs, and `2` for invalid usage. A configuration error is reported before
+the command writes any CSV.
+
 ## Documentation
 
 - [Getting started](docs/page_getting_started.dox)

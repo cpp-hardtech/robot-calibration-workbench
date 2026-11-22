@@ -14,6 +14,14 @@ public:
 };
 
 /**
+ * @brief Thrown when an image contains too few features from the configured target.
+ */
+struct TargetNotFoundException : public ICalException
+{
+  using ICalException::ICalException;
+};
+
+/**
  * @brief Exception related specifically to optimization-related errors
  */
 struct OptimizationException : public ICalException

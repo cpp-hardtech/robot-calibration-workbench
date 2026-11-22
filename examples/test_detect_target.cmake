@@ -117,3 +117,79 @@ if(NOT
       "Failed to write target overlay")
   message(FATAL_ERROR "An unwritable overlay path did not produce an output error: ${diagnostic}")
 endif()
+
+set(quoted_image "${TEST_DIRECTORY}/frame \"left\", 01.jpg")
+set(blank "${TEST_DIRECTORY}/blank frame.pgm")
+set(unreadable "${TEST_DIRECTORY}/missing frame.jpg")
+configure_file("${TARGET_IMAGE}" "${quoted_image}" COPYONLY)
+set(white_pixels "")
+foreach(i RANGE 1 256)
+  string(APPEND white_pixels "255 255 255 255\n")
+endforeach()
+file(WRITE "${blank}" "P2\n32 32\n255\n${white_pixels}")
+string(
+  REPLACE "\""
+          "\"\""
+          escaped_image
+          "${quoted_image}")
+set(batch_header "image_path,status,feature_count,point_count\n")
+set(detected_row "\"${escaped_image}\",detected,24,24\n")
+string(
+  CONCAT expected_batch
+         "${batch_header}"
+         "\"${blank}\",no_detection,0,0\n"
+         "\"${unreadable}\",unreadable,0,0\n"
+         "${detected_row}")
+
+execute_process(
+  COMMAND "${DETECT_TARGET}" "${TARGET_CONFIG}" --batch "${blank}" "${unreadable}" "${quoted_image}"
+  RESULT_VARIABLE status
+  OUTPUT_VARIABLE batch
+  ERROR_VARIABLE diagnostic)
+if(NOT
+   status
+   EQUAL
+   1
+   OR NOT
+      batch
+      STREQUAL
+      expected_batch)
+  message(FATAL_ERROR "Unexpected mixed batch result: ${status}\n${batch}\n${diagnostic}")
+endif()
+
+execute_process(
+  COMMAND "${DETECT_TARGET}" "${TARGET_CONFIG}" --batch "${quoted_image}" "${quoted_image}"
+  RESULT_VARIABLE status
+  OUTPUT_VARIABLE batch
+  ERROR_VARIABLE diagnostic)
+set(expected_batch "${batch_header}${detected_row}${detected_row}")
+if(NOT
+   status
+   EQUAL
+   0
+   OR NOT
+      batch
+      STREQUAL
+      expected_batch)
+  message(FATAL_ERROR "Unexpected successful batch result: ${status}\n${batch}\n${diagnostic}")
+endif()
+
+execute_process(
+  COMMAND "${DETECT_TARGET}" "${TARGET_CONFIG}" --batch
+  RESULT_VARIABLE status
+  OUTPUT_VARIABLE batch
+  ERROR_VARIABLE diagnostic)
+if(NOT
+   status
+   EQUAL
+   2
+   OR NOT
+      batch
+      STREQUAL
+      ""
+   OR NOT
+      diagnostic
+      MATCHES
+      "Usage:")
+  message(FATAL_ERROR "An empty batch did not produce a usage error")
+endif()

@@ -87,7 +87,7 @@ TargetFeatures2D CharucoGridBoardTargetFinder::findTargetFeatures(const cv::Mat&
 
   if (marker_ids.empty())
   {
-    throw ICalException("No ArUco markers were detected");
+    throw TargetNotFoundException("No ArUco markers were detected");
   }
 
   // Detect the chessboard intersections given the observed ArUco markers
