@@ -70,6 +70,18 @@ The bundled data is enough to run it without hardware. See
 [examples/extrinsic_hand_eye.cpp](examples/extrinsic_hand_eye.cpp) for the source and
 [examples/data/](examples/data/) for the datasets.
 
+## Run calibration without a display
+
+Start either calibration application with `--headless` followed by its configuration, observation,
+and result files. The camera intrinsic application also accepts an optional ROS YAML output file.
+
+```bash
+calibration_workbench_camera_intrinsic_calibration_app --headless config.yaml observations.yaml results.yaml ros-results.yaml
+calibration_workbench_extrinsic_hand_eye_calibration_app --headless config.yaml observations.yaml results.yaml
+```
+
+The applications exit after saving a converged result and report calibration errors to standard error.
+
 ## Docker
 
 A container definition and a Compose file are provided under `docker/`. The Compose file
