@@ -8,7 +8,8 @@ add_library(
   src/target_finder.cpp
   src/modified_circle_grid_target_finder.cpp
   src/aruco_grid_target_finder.cpp
-  src/charuco_grid_target_finder.cpp)
+  src/charuco_grid_target_finder.cpp
+  src/chessboard_grid_target_finder.cpp)
 target_include_directories(
   ${PROJECT_NAME}_target_finders_opencv PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
                                                "$<INSTALL_INTERFACE:include>")
@@ -17,6 +18,7 @@ target_link_libraries(
   PUBLIC ${PROJECT_NAME}_core
          opencv_core
          opencv_aruco
+         opencv_calib3d
          opencv_features2d
          opencv_imgproc
          opencv_imgcodecs)
