@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <calibration_workbench/optimizations/extrinsic_hand_eye.h>
 #include <calibration_workbench/optimizations/ceres_math_utilities.h>
+#include <calibration_workbench/core/exceptions.h>
 
 // Test utilities
 #include <calibration_workbench_tests/utilities.h>
@@ -277,6 +278,21 @@ TYPED_TEST(HandEyeTest, RandomAroundAnswerInitialConditions_MoreHemispheres)
   }
   EXPECT_EQ(count, n);
   EXPECT_LT(count, max_attempts);
+}
+
+TEST(HandEyeInputValidation, RejectsObservationsWithoutCorrespondences)
+{
+  ExtrinsicHandEyeProblem2D3D image_problem{};
+  image_problem.camera_mount_to_camera_guess = Eigen::Isometry3d::Identity();
+  image_problem.target_mount_to_target_guess = Eigen::Isometry3d::Identity();
+  image_problem.observations.emplace_back();
+  EXPECT_THROW(optimize(image_problem), OptimizationException);
+
+  ExtrinsicHandEyeProblem3D3D point_problem{};
+  point_problem.camera_mount_to_camera_guess = Eigen::Isometry3d::Identity();
+  point_problem.target_mount_to_target_guess = Eigen::Isometry3d::Identity();
+  point_problem.observations.emplace_back();
+  EXPECT_THROW(optimize(point_problem), OptimizationException);
 }
 
 int main(int argc, char** argv)

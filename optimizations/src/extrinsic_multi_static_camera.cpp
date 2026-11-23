@@ -9,8 +9,30 @@
 
 namespace calibration_workbench
 {
+static void validateStaticCameraInputCounts(std::size_t camera_count, std::size_t intrinsics_count,
+                                            std::size_t camera_observation_count)
+{
+  if (intrinsics_count != camera_count || camera_observation_count != camera_count)
+    throw OptimizationException("Static multi-camera calibration requires intrinsics and observations for each camera");
+}
+
+static void validateStaticCameraViewCount(std::size_t observations, std::size_t poses)
+{
+  if (observations != poses)
+    throw OptimizationException("Static multi-camera calibration requires one observation set per pose for each "
+                                "camera");
+}
+
 ExtrinsicMultiStaticCameraMovingTargetResult optimize(const ExtrinsicMultiStaticCameraMovingTargetProblem& params)
 {
+  const auto camera_count = params.base_to_camera_guess.size();
+  validateStaticCameraInputCounts(camera_count, params.intr.size(), params.image_observations.size());
+  if (params.wrist_poses.size() != camera_count)
+    throw OptimizationException("Moving-target calibration requires wrist poses for each camera");
+
+  for (std::size_t camera = 0; camera < camera_count; ++camera)
+    validateStaticCameraViewCount(params.image_observations[camera].size(), params.wrist_poses[camera].size());
+
   Pose6d internal_wrist_to_target = poseEigenToCal(params.wrist_to_target_guess);
 
   std::vector<Pose6d> internal_camera_to_base;
@@ -20,7 +42,6 @@ ExtrinsicMultiStaticCameraMovingTargetResult optimize(const ExtrinsicMultiStatic
 
   for (std::size_t c = 0; c < params.base_to_camera_guess.size(); ++c)  // For each camera
   {
-    assert(params.image_observations[c].size() == params.wrist_poses[c].size());
     internal_camera_to_base[c] = poseEigenToCal(params.base_to_camera_guess[c].inverse());
     for (std::size_t i = 0; i < params.wrist_poses[c].size(); ++i)  // For each wrist pose / image set
     {
@@ -109,6 +130,11 @@ ExtrinsicMultiStaticCameraMovingTargetResult optimize(const ExtrinsicMultiStatic
 
 ExtrinsicMultiStaticCameraOnlyResult optimize(const ExtrinsicMultiStaticCameraOnlyProblem& params)
 {
+  validateStaticCameraInputCounts(params.base_to_camera_guess.size(), params.intr.size(),
+                                  params.image_observations.size());
+  for (const auto& camera_observations : params.image_observations)
+    validateStaticCameraViewCount(camera_observations.size(), params.base_to_target_guess.size());
+
   std::vector<Pose6d> internal_base_to_target;
   std::vector<Pose6d> internal_camera_to_base;
   internal_camera_to_base.resize(params.base_to_camera_guess.size());
@@ -121,7 +147,6 @@ ExtrinsicMultiStaticCameraOnlyResult optimize(const ExtrinsicMultiStaticCameraOn
     internal_base_to_target[i] = poseEigenToCal(params.base_to_target_guess[i]);
     for (std::size_t c = 0; c < params.base_to_camera_guess.size(); ++c)  // For each camera
     {
-      assert(params.image_observations[c].size() == params.base_to_target_guess.size());
       internal_camera_to_base[c] = poseEigenToCal(params.base_to_camera_guess[c].inverse());
 
       for (std::size_t j = 0; j < params.image_observations[c][i].size();
@@ -181,6 +206,11 @@ ExtrinsicMultiStaticCameraOnlyResult optimize(const ExtrinsicMultiStaticCameraOn
 ExtrinsicMultiStaticCameraMovingTargetWristOnlyResult
 optimize(const ExtrinsicMultiStaticCameraMovingTargetWristOnlyProblem& params)
 {
+  validateStaticCameraInputCounts(params.base_to_camera_guess.size(), params.intr.size(),
+                                  params.image_observations.size());
+  for (const auto& camera_observations : params.image_observations)
+    validateStaticCameraViewCount(camera_observations.size(), params.wrist_poses.size());
+
   Pose6d internal_wrist_to_target = poseEigenToCal(params.wrist_to_target_guess);
 
   Pose6d internal_camera_to_base_correction = poseEigenToCal(Eigen::Isometry3d::Identity());
@@ -189,7 +219,6 @@ optimize(const ExtrinsicMultiStaticCameraMovingTargetWristOnlyProblem& params)
 
   for (std::size_t c = 0; c < params.base_to_camera_guess.size(); ++c)  // For each camera
   {
-    assert(params.image_observations[c].size() == params.wrist_poses.size());
     for (std::size_t i = 0; i < params.wrist_poses.size(); ++i)  // For each wrist pose / image set
     {
       for (std::size_t j = 0; j < params.image_observations[c][i].size();

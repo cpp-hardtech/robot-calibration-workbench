@@ -7,10 +7,19 @@
 #include <calibration_workbench/core/serialization.h>
 
 #include <ceres/ceres.h>
+#include <algorithm>
 #include <iostream>
 
 namespace calibration_workbench
 {
+template <typename Observations>
+static void requireHandEyeCorrespondences(const Observations& observations)
+{
+  if (std::none_of(observations.begin(), observations.end(),
+                   [](const auto& observation) { return !observation.correspondence_set.empty(); }))
+    throw OptimizationException("Hand-eye calibration requires at least one correspondence");
+}
+
 bool isPointVisible(const Pose6d& camera_to_camera_mount, const Pose6d& target_mount_to_target,
                     const ExtrinsicHandEye2D3DCost* cost_fn)
 {
@@ -45,6 +54,8 @@ std::ostream& operator<<(std::ostream& stream, const ExtrinsicHandEyeResult& res
 
 ExtrinsicHandEyeResult optimize(const ExtrinsicHandEyeProblem2D3D& params)
 {
+  requireHandEyeCorrespondences(params.observations);
+
   Pose6d internal_base_to_target = poseEigenToCal(params.target_mount_to_target_guess);
   Pose6d internal_camera_to_wrist = poseEigenToCal(params.camera_mount_to_camera_guess.inverse());
 
@@ -129,6 +140,8 @@ ExtrinsicHandEyeResult optimize(const ExtrinsicHandEyeProblem2D3D& params)
 
 ExtrinsicHandEyeResult optimize(const ExtrinsicHandEyeProblem3D3D& params)
 {
+  requireHandEyeCorrespondences(params.observations);
+
   Pose6d internal_base_to_target = poseEigenToCal(params.target_mount_to_target_guess);
   Pose6d internal_camera_to_wrist = poseEigenToCal(params.camera_mount_to_camera_guess.inverse());
 

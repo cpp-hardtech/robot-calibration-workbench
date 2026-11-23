@@ -22,6 +22,20 @@ TEST(CameraIntrinsicCalibrationValidation, RejectsEmptyImageObservations)
   EXPECT_THROW(optimize(problem), OptimizationException);
 }
 
+TEST(CameraIntrinsicCalibrationValidation, RejectsMismatchedExtrinsicGuessCount)
+{
+  CameraIntrinsicProblem problem{};
+  problem.intrinsics_guess = CameraIntrinsics{ { 600.0, 610.0, 320.0, 240.0 } };
+  problem.use_extrinsic_guesses = true;
+  problem.image_observations.resize(1);
+  problem.image_observations.front().emplace_back(Eigen::Vector2d(320.0, 240.0), Eigen::Vector3d(0.0, 0.0, 1.0));
+
+  EXPECT_THROW(optimize(problem), OptimizationException);
+
+  problem.extrinsic_guesses = { Eigen::Isometry3d::Identity(), Eigen::Isometry3d::Identity() };
+  EXPECT_THROW(optimize(problem), OptimizationException);
+}
+
 TEST(CameraIntrinsicCalibrationValidation, MeasureVirtualTargetDiff)
 {
   test::Target target(8, 6, 0.025);
