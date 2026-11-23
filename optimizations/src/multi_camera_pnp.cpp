@@ -1,3 +1,5 @@
+#include "pnp_target_geometry.h"
+
 #include <calibration_workbench/optimizations/multi_camera_pnp.h>
 #include <calibration_workbench/optimizations/multi_camera_pnp_cost.h>
 #include <calibration_workbench/optimizations/ceres_math_utilities.h>
@@ -17,6 +19,7 @@ MultiCameraPnPResult optimize(const MultiCameraPnPProblem& params)
   Pose6d internal_base_to_target = poseEigenToCal(params.base_to_target_guess);
 
   ceres::Problem problem;
+  detail::PnPTargetGeometry target_geometry;
 
   for (std::size_t c = 0; c < params.base_to_camera.size(); ++c)  // For each camera
   {
@@ -27,6 +30,8 @@ MultiCameraPnPResult optimize(const MultiCameraPnPProblem& params)
       const auto& point_in_target = params.image_observations[c][i].in_target;
       const auto& base_to_camera = params.base_to_camera[c];
       const auto& intr = params.intr[c];
+
+      target_geometry.addPoint(point_in_target);
 
       // Allocate Ceres data structures - ownership is taken by the ceres
       // Problem data structure
@@ -40,6 +45,8 @@ MultiCameraPnPResult optimize(const MultiCameraPnPProblem& params)
 
   if (problem.NumResidualBlocks() == 0)
     throw OptimizationException("Multi-camera PnP requires at least one correspondence");
+
+  target_geometry.validate();
 
   ceres::Solver::Options options;
   ceres::Solver::Summary summary;
