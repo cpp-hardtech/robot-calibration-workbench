@@ -1,4 +1,21 @@
 find_package(boost_plugin_loader REQUIRED)
+find_package(yaml-cpp REQUIRED)
+
+add_executable(${PROJECT_NAME}_make_observations make_observations.cpp)
+target_link_libraries(${PROJECT_NAME}_make_observations PRIVATE yaml-cpp)
+target_cxx_version(${PROJECT_NAME}_make_observations PRIVATE VERSION 17)
+install(TARGETS ${PROJECT_NAME}_make_observations RUNTIME DESTINATION lib/${PROJECT_NAME}
+                                                          COMPONENT observation_manifest_cli)
+
+if(CALIBRATION_WORKBENCH_ENABLE_TESTING)
+  add_test(
+    NAME MakeObservationsCli
+    COMMAND
+      ${CMAKE_COMMAND} "-DMAKE_OBSERVATIONS=$<TARGET_FILE:${PROJECT_NAME}_make_observations>"
+      "-DTEST_DIRECTORY=${CMAKE_CURRENT_BINARY_DIR}/make-observations-test" -P
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_make_observations.cmake")
+  add_dependencies(run_tests ${PROJECT_NAME}_make_observations)
+endif()
 
 # Camera intrinsic calibration example
 add_executable(${PROJECT_NAME}_camera_intrinsic camera_intrinsic.cpp)
