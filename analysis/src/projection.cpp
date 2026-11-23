@@ -1,4 +1,5 @@
 #include <calibration_workbench/analysis/projection.h>
+#include <calibration_workbench/core/exceptions.h>
 
 namespace calibration_workbench
 {
@@ -17,10 +18,19 @@ Eigen::Vector3d computeLinePlaneIntersection(const Eigen::Vector3d& plane_normal
   return line_pt + line * d;
 }
 
-Eigen::MatrixX3d project3D(const Eigen::MatrixX2d& source, const Eigen::Isometry3d& source_to_plane,
+Eigen::MatrixX3d project3D(const Eigen::MatrixX2d& source, const Eigen::Isometry3d& target_in_camera,
                            const Eigen::Matrix3d& k)
 {
   const Eigen::Index n = source.rows();
+  if (n == 0)
+    return Eigen::MatrixX3d(0, 3);
+
+  if (!k.allFinite())
+    throw ICalException("Camera matrix must be finite for 3D backprojection");
+
+  const auto camera_projection = k.fullPivLu();
+  if (!camera_projection.isInvertible())
+    throw ICalException("Camera matrix must be invertible for 3D backprojection");
 
   // Convert 2D source points to 3D homogeneous coordinates
   Eigen::MatrixX3d source_3d(n, 3);
@@ -28,18 +38,24 @@ Eigen::MatrixX3d project3D(const Eigen::MatrixX2d& source, const Eigen::Isometry
   source_3d.col(2) = Eigen::VectorXd::Ones(n);
 
   // Using camera as reference frame
-  Eigen::Vector3d plane_normal = source_to_plane.matrix().col(2).head<3>();  // Plane z-axis in source frame
-  Eigen::Vector3d plane_pt = source_to_plane.translation();                  // Plane origin in source frame
+  Eigen::Vector3d plane_normal = target_in_camera.matrix().col(2).head<3>();  // Plane z-axis in source frame
+  Eigen::Vector3d plane_pt = target_in_camera.translation();                  // Plane origin in source frame
   Eigen::Vector3d camera_origin = Eigen::Vector3d::Zero();
 
   // Create 3D unit vector rays for each 3D coorindate in the camera frame
-  Eigen::MatrixX3d rays_in_camera = (k.inverse() * source_3d.transpose()).transpose();
+  Eigen::MatrixX3d rays_in_camera = camera_projection.solve(source_3d.transpose()).transpose();
   rays_in_camera.rowwise().normalize();
 
   Eigen::MatrixX3d projected_source_3d(n, 3);
   for (Eigen::Index i = 0; i < n; ++i)
-    projected_source_3d.row(i) =
+  {
+    const Eigen::Vector3d intersection =
         computeLinePlaneIntersection(plane_normal, plane_pt, rays_in_camera.row(i), camera_origin);
+    if (!intersection.allFinite() || intersection.z() <= 0.0)
+      throw ICalException("Target-plane intersection must be finite and in front of the camera");
+
+    projected_source_3d.row(i) = intersection;
+  }
 
   // Transform the projected source points into the plane frame
   //   First convert 3D projected source points into 4D homogeneous coordinates
@@ -48,7 +64,7 @@ Eigen::MatrixX3d project3D(const Eigen::MatrixX2d& source, const Eigen::Isometry
   projected_source_4d.col(3) = Eigen::VectorXd::Ones(n);
   //   Apply the transform
   Eigen::MatrixX4d projected_source_4d_in_plane =
-      (source_to_plane.inverse() * projected_source_4d.transpose()).transpose();
+      (target_in_camera.inverse() * projected_source_4d.transpose()).transpose();
 
   // Return only the 3D points in matrix form
   return projected_source_4d_in_plane.block(0, 0, n, 3);
