@@ -1,5 +1,6 @@
 #include <calibration_workbench/optimizations/pnp.h>
 #include <calibration_workbench/optimizations/multi_camera_pnp.h>
+#include <calibration_workbench/core/utils.h>
 #include <calibration_workbench/analysis/statistics.h>
 #include <calibration_workbench_tests/observation_creator.h>
 #include <calibration_workbench_tests/utilities.h>
@@ -254,6 +255,44 @@ TEST(PnP, RejectsEmptyCorrespondences)
   PnPProblem3D problem_3d{};
   problem_3d.camera_to_target_guess = Eigen::Isometry3d::Identity();
   EXPECT_THROW(optimize(problem_3d), OptimizationException);
+}
+
+TEST(PnP, RecoversRotationFromIdentityAndNearIdentity)
+{
+  const CameraIntrinsics intrinsics{ { 600.0, 610.0, 320.0, 240.0 } };
+  Eigen::Isometry3d expected = Eigen::Isometry3d::Identity();
+  expected.translate(Eigen::Vector3d(0.04, -0.02, 0.85));
+  expected.rotate(Eigen::AngleAxisd(0.15, Eigen::Vector3d::UnitX()));
+
+  PnPProblem image_problem{};
+  image_problem.intr = intrinsics;
+  PnPProblem3D point_problem{};
+  for (int row = 0; row < 4; ++row)
+    for (int col = 0; col < 5; ++col)
+    {
+      const Eigen::Vector3d target_point(0.02 * col, 0.02 * row, 0.0);
+      const Eigen::Vector3d camera_point = expected * target_point;
+      image_problem.correspondences.emplace_back(projectPoint(intrinsics, camera_point), target_point);
+      point_problem.correspondences.emplace_back(camera_point, target_point);
+    }
+
+  for (const double initial_rotation : { 0.0, 1e-12 })
+  {
+    SCOPED_TRACE(initial_rotation);
+    image_problem.camera_to_target_guess =
+        Eigen::Translation3d(expected.translation()) * Eigen::AngleAxisd(initial_rotation, Eigen::Vector3d::UnitX());
+    point_problem.camera_to_target_guess = image_problem.camera_to_target_guess;
+
+    const auto image_result = optimize(image_problem);
+    const auto point_result = optimize(point_problem);
+
+    EXPECT_TRUE(image_result.converged);
+    EXPECT_TRUE(point_result.converged);
+    EXPECT_TRUE(image_result.camera_to_target.isApprox(expected, 1e-6));
+    EXPECT_TRUE(point_result.camera_to_target.isApprox(expected, 1e-6));
+    EXPECT_LT(image_result.final_cost_per_obs, 1e-12);
+    EXPECT_LT(point_result.final_cost_per_obs, 1e-12);
+  }
 }
 
 int main(int argc, char** argv)

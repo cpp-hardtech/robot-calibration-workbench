@@ -32,17 +32,7 @@ public:
   template <typename T>
   static Isometry3<T> createTransform(T const* const* params, const std::size_t idx)
   {
-    Eigen::Map<const Vector3<T>> t(params[idx]);
-    Eigen::Map<const Vector3<T>> aa(params[idx + 1]);
-
-    Isometry3<T> result = Isometry3<T>::Identity() * Eigen::Translation<T, 3>(t);
-
-    T aa_norm = aa.norm();
-    if (aa_norm > std::numeric_limits<T>::epsilon())
-    {
-      result *= Eigen::AngleAxis<T>(aa_norm, aa.normalized());
-    }
-    return result;
+    return toIsometry(params[idx + 1], params[idx]);
   }
 
   static std::vector<double*> constructParameters(Eigen::MatrixX4d& camera_chain_dh_offsets,
