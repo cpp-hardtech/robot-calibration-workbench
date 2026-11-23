@@ -166,9 +166,12 @@
            </widget>
           </item>
           <item row="0" column="1">
-           <widget class="QSpinBox" name="minThresholdSpinBox">
+           <widget class="QDoubleSpinBox" name="minThresholdSpinBox">
+            <property name="decimals">
+             <number>6</number>
+            </property>
             <property name="maximum">
-             <number>255</number>
+             <double>255.000000000000000</double>
             </property>
            </widget>
           </item>
@@ -180,12 +183,15 @@
            </widget>
           </item>
           <item row="1" column="1">
-           <widget class="QSpinBox" name="maxThresholdSpinBox">
+           <widget class="QDoubleSpinBox" name="maxThresholdSpinBox">
+            <property name="decimals">
+             <number>6</number>
+            </property>
             <property name="maximum">
-             <number>255</number>
+             <double>255.000000000000000</double>
             </property>
             <property name="value">
-             <number>255</number>
+             <double>255.000000000000000</double>
             </property>
            </widget>
           </item>
