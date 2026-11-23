@@ -192,6 +192,31 @@ In either calibration application, choose **File → Export observation report**
 current observations as CSV. The report includes image and pose paths, detected feature
 counts, homography errors in pixels, and the status shown for each observation.
 
+## Estimate a target pose
+
+Estimate the pose of a configured target in a single image without opening a display.
+Pass a standalone target configuration or a calibration YAML with a `target_finder`
+entry, a ROS `plumb_bob` camera calibration YAML, and an image of the calibrated
+resolution. The bundled ChArUco sample contains all three inputs:
+
+```bash
+source install/setup.bash
+prefix=install/calibration_workbench
+sample="$prefix/share/calibration_workbench/data/test_set_charuco"
+"$prefix/lib/calibration_workbench/calibration_workbench_estimate_target_pose" \
+  "$sample/cal_data.yaml" "$sample/camera.ros.yaml" "$sample/images/0.png" > pose.yaml
+```
+
+The YAML contains `target_to_camera` (translation `x,y,z` and quaternion `qw,qx,qy,qz`),
+`correspondence_count`, and `reprojection_rms_px`. The transform maps a target-frame point
+into the OpenCV camera optical frame (right, down, forward): `p_camera = R * p_target + t`.
+Translation uses the target's configured units. RMS is the root mean square Euclidean
+reprojection error per point in pixels, using the calibrated distortion coefficients.
+
+Exit status is `0` for a pose, `2` for invalid command usage, and `1` for invalid inputs,
+insufficient target correspondences, or pose estimation or output failure. Input and
+estimation errors are reported to standard error before writing a result.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
