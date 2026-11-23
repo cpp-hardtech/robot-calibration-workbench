@@ -68,8 +68,13 @@ struct convert<Eigen::Matrix<FloatT, 2, 1>>
 
   static bool decode(const YAML::Node& node, T& val)
   {
-    val.x() = getMember<FloatT>(node, "x");
-    val.y() = getMember<FloatT>(node, "y");
+    T decoded;
+    decoded.x() = getMember<FloatT>(node, "x");
+    decoded.y() = getMember<FloatT>(node, "y");
+    if (!decoded.allFinite())
+      return false;
+
+    val = decoded;
 
     return true;
   }
@@ -91,9 +96,14 @@ struct convert<Eigen::Matrix<FloatT, 3, 1>>
 
   static bool decode(const YAML::Node& node, T& val)
   {
-    val.x() = getMember<FloatT>(node, "x");
-    val.y() = getMember<FloatT>(node, "y");
-    val.z() = getMember<FloatT>(node, "z");
+    T decoded;
+    decoded.x() = getMember<FloatT>(node, "x");
+    decoded.y() = getMember<FloatT>(node, "y");
+    decoded.z() = getMember<FloatT>(node, "z");
+    if (!decoded.allFinite())
+      return false;
+
+    val = decoded;
 
     return true;
   }
@@ -133,7 +143,7 @@ struct convert<Eigen::Transform<FloatT, 3, Eigen::Isometry>>
     quat.y() = getMember<FloatT>(node, "qy");
     quat.z() = getMember<FloatT>(node, "qz");
 
-    if (!quat.coeffs().allFinite())
+    if (!trans.allFinite() || !quat.coeffs().allFinite())
       return false;
 
     const FloatT scale = quat.coeffs().cwiseAbs().maxCoeff();

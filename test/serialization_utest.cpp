@@ -100,6 +100,52 @@ TEST(SerializationTest, RejectsInvalidIsometryRotation)
   EXPECT_THROW(invalid.as<Eigen::Isometry3d>(), YAML::BadConversion);
 }
 
+TEST(SerializationTest, RejectsNonfiniteCorrespondenceCoordinates)
+{
+  const YAML::Node valid = YAML::Load("{in_image: {x: -347.5, y: 222.3}, in_target: {x: 0.036195, y: -0.07239, z: 0}}");
+  const auto correspondence = valid.as<Correspondence2D3D>();
+  EXPECT_DOUBLE_EQ(correspondence.in_image.x(), -347.5);
+  EXPECT_DOUBLE_EQ(correspondence.in_target.y(), -0.07239);
+
+  for (const char* invalid : { ".nan", ".inf", "-.inf" })
+  {
+    SCOPED_TRACE(invalid);
+    for (const char* axis : { "x", "y" })
+    {
+      SCOPED_TRACE(axis);
+      auto node = YAML::Clone(valid);
+      node["in_image"][axis] = YAML::Load(invalid);
+      EXPECT_THROW(node["in_image"].as<Eigen::Vector2d>(), YAML::BadConversion);
+      EXPECT_THROW(node.as<Correspondence2D3D>(), BadFileException);
+    }
+
+    for (const char* axis : { "x", "y", "z" })
+    {
+      SCOPED_TRACE(axis);
+      auto node = YAML::Clone(valid);
+      node["in_target"][axis] = YAML::Load(invalid);
+      EXPECT_THROW(node["in_target"].as<Eigen::Vector3d>(), YAML::BadConversion);
+      EXPECT_THROW(node.as<Correspondence2D3D>(), BadFileException);
+    }
+  }
+}
+
+TEST(SerializationTest, RejectsNonfiniteIsometryTranslation)
+{
+  const YAML::Node valid = YAML::Load("{x: -0.25, y: 1.5, z: 0, qw: 1, qx: 0, qy: 0, qz: 0}");
+  EXPECT_TRUE(valid.as<Eigen::Isometry3d>().translation().isApprox(Eigen::Vector3d(-0.25, 1.5, 0.0)));
+
+  for (const char* invalid : { ".nan", ".inf", "-.inf" })
+    for (const char* axis : { "x", "y", "z" })
+    {
+      SCOPED_TRACE(invalid);
+      SCOPED_TRACE(axis);
+      auto node = YAML::Clone(valid);
+      node[axis] = YAML::Load(invalid);
+      EXPECT_THROW(node.as<Eigen::Isometry3d>(), YAML::BadConversion);
+    }
+}
+
 using Implementations = testing::Types<ExtrinsicHandEyeProblem2D3D, ExtrinsicHandEyeProblem3D3D>;
 
 TYPED_TEST_CASE(SerializationTestFixture, Implementations);
