@@ -201,6 +201,20 @@ endforeach()
 set(collision_image "${OUTPUT_DIR}/report-image.png")
 set(collision_pose "${OUTPUT_DIR}/report-pose.yaml")
 set(collision_manifest "${OUTPUT_DIR}/report-collision.yaml")
+set(image_hardlink "${OUTPUT_DIR}/image-hardlink.png")
+set(pose_hardlink "${OUTPUT_DIR}/pose-hardlink.yaml")
+set(pose_symlink "${OUTPUT_DIR}/pose-link.yaml")
+set(loop_image "${OUTPUT_DIR}/loop-image.png")
+set(collision_result "${OUTPUT_DIR}/collision-calibration.yaml")
+set(collision_ros "${OUTPUT_DIR}/collision-ros.yaml")
+file(
+  REMOVE
+  "${image_hardlink}"
+  "${pose_hardlink}"
+  "${pose_symlink}"
+  "${loop_image}"
+  "${collision_result}"
+  "${collision_ros}")
 configure_file("${SAMPLE_DIR}/images/0.png" "${collision_image}" COPYONLY)
 configure_file("${SAMPLE_DIR}/poses/0.yaml" "${collision_pose}" COPYONLY)
 file(SHA256 "${collision_image}" image_before)
@@ -215,6 +229,67 @@ foreach(image IN LISTS images)
   endif()
 endforeach()
 
+execute_process(COMMAND ln "${collision_image}" "${image_hardlink}" RESULT_VARIABLE image_link_status)
+execute_process(COMMAND ln "${collision_pose}" "${pose_hardlink}" RESULT_VARIABLE pose_link_status)
+execute_process(COMMAND "${CMAKE_COMMAND}" -E create_symlink "report-pose.yaml" "${pose_symlink}"
+                RESULT_VARIABLE pose_symlink_status)
+execute_process(COMMAND "${CMAKE_COMMAND}" -E create_symlink "loop-image.png" "${loop_image}"
+                RESULT_VARIABLE loop_status)
+if(NOT
+   image_link_status
+   EQUAL
+   0
+   OR NOT
+      pose_link_status
+      EQUAL
+      0
+   OR NOT
+      pose_symlink_status
+      EQUAL
+      0
+   OR NOT
+      loop_status
+      EQUAL
+      0)
+  message(FATAL_ERROR "Could not create observation path collision fixtures")
+endif()
+
+run_calibration(
+  "${INTRINSIC_APP}"
+  --headless
+  1
+  "calibration result path.*image-hardlink.png.*observation image path.*report-image.png"
+  "${config}"
+  "${collision_manifest}"
+  "${image_hardlink}")
+run_calibration(
+  "${INTRINSIC_APP}"
+  --headless
+  1
+  "ROS calibration result path.*pose-link.yaml.*observation pose path.*report-pose.yaml"
+  "${OUTPUT_DIR}/with-guesses.yaml"
+  "${collision_manifest}"
+  "${collision_result}"
+  "${pose_symlink}")
+run_calibration(
+  "${HAND_EYE_APP}"
+  --headless
+  1
+  "calibration result path.*report-pose.yaml.*observation pose path.*report-pose.yaml"
+  "${config}"
+  "${collision_manifest}"
+  "${collision_pose}")
+run_calibration(
+  "${INTRINSIC_APP}"
+  --headless
+  1
+  "image and pose paths"
+  "${config}"
+  "${collision_manifest}"
+  "${collision_result}"
+  "${collision_ros}"
+  --observation-report
+  "${collision_image}")
 run_calibration(
   "${INTRINSIC_APP}"
   --validate-only
@@ -230,9 +305,40 @@ run_calibration(
   "image and pose paths"
   "${config}"
   "${collision_manifest}"
-  "${OUTPUT_DIR}/collision-calibration.yaml"
+  "${collision_result}"
   --observation-report
   "${collision_pose}")
+if(EXISTS "${collision_result}" OR EXISTS "${collision_ros}")
+  message(FATAL_ERROR "An observation path conflict left partial calibration results")
+endif()
+
+file(APPEND "${collision_manifest}" "  - image: loop-image.png\n    pose: report-pose.yaml\n")
+run_calibration(
+  "${HAND_EYE_APP}"
+  --validate-only
+  0
+  ""
+  "${config}"
+  "${collision_manifest}"
+  "${pose_hardlink}")
+file(READ "${pose_hardlink}" hardlink_csv)
+file(STRINGS "${pose_hardlink}" accepted_rows REGEX "Included in calibration")
+list(LENGTH accepted_rows accepted_count)
+if(NOT
+   accepted_count
+   EQUAL
+   15
+   OR NOT
+      hardlink_csv
+      MATCHES
+      "^image_path,pose_path,"
+   OR NOT
+      hardlink_csv
+      MATCHES
+      "loop-image.png.*(Failed to load file|Image file does not exist)")
+  message(FATAL_ERROR "The report did not replace only the hard-link entry with the expected diagnostics")
+endif()
+
 file(SHA256 "${collision_image}" image_after)
 file(SHA256 "${collision_pose}" pose_after)
 if(NOT
@@ -243,5 +349,6 @@ if(NOT
       pose_before
       STREQUAL
       pose_after)
-  message(FATAL_ERROR "Observation report modified an input file")
+  message(FATAL_ERROR "An output modified an observation input file")
 endif()
+message(STATUS "Observation output collisions left inputs and all result paths intact")

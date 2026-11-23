@@ -54,6 +54,7 @@ int runObservationValidation(Widget& widget, char** argv)
     validateObservationReportPath(argv[4], argv + 2, argv + 4);
     widget.loadConfig(argv[2]);
     widget.loadObservations(argv[3]);
+    widget.validateObservationOutputPaths(nullptr, nullptr, argv[4]);
     const auto usable = widget.validateObservations();
     widget.saveObservationReport(argv[4]);
     if (usable == 0)

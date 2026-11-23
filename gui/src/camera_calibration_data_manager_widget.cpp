@@ -1,4 +1,5 @@
 #include "ui_camera_calibration_data_manager_widget.h"
+#include "output_path_identity.h"
 
 #include <calibration_workbench/gui/camera_calibration_data_manager_widget.h>
 #include <calibration_workbench/gui/target_finder.h>
@@ -226,30 +227,72 @@ void CameraCalibrationDataManagerWidget::onSaveObservationReport()
   }
 }
 
+void CameraCalibrationDataManagerWidget::validateObservationOutputPaths(const char* result, const char* ros,
+                                                                        const char* report) const
+{
+  using namespace output_path_identity;
+  struct Output
+  {
+    NamedPath path;
+    bool replaces_directory_entry;
+  };
+
+  std::vector<Output> outputs;
+  if (result)
+    outputs.push_back({ resolvePath("calibration result", result), false });
+  if (ros)
+    outputs.push_back({ resolvePath("ROS calibration result", ros), false });
+  if (report)
+    outputs.push_back({ resolvePath("observation report", report), true });
+
+  const std::pair<int, const char*> assets[] = { { IMAGE_FILE_NAME_ROLE, "observation image" },
+                                                 { POSE_FILE_NAME_ROLE, "observation pose" } };
+  const auto tree = ui_->tree_widget_observations;
+  for (int i = 0; i < tree->topLevelItemCount(); ++i)
+  {
+    const auto item = tree->topLevelItem(i);
+    for (const auto& [role, label] : assets)
+    {
+      const auto reference = item->data(0, role).toString().toStdString();
+      if (reference.empty())
+        continue;
+
+      const Output* collision = nullptr;
+      try
+      {
+        const auto asset = resolvePath(label, reference.c_str());
+        for (const auto& output : outputs)
+        {
+          if (aliases(output.path, asset, !output.replaces_directory_entry))
+          {
+            collision = &output;
+            break;
+          }
+        }
+      }
+      catch (const std::runtime_error&)
+      {
+        continue;
+      }
+
+      if (collision)
+      {
+        if (collision->replaces_directory_entry)
+          throw ICalException("Observation report path must differ from image and pose paths: '" + std::string(report) +
+                              "'");
+        throw ICalException(describe(collision->path) + " conflicts with " + label + " path '" + reference + "'");
+      }
+    }
+  }
+}
+
 void CameraCalibrationDataManagerWidget::saveObservationReport(const std::string& file) const
 {
   const auto tree = ui_->tree_widget_observations;
   if (tree->topLevelItemCount() == 0)
     throw ICalException("No observations have been added");
 
-  const auto normalizedPath = [](const QString& path) {
-    const QFileInfo info(path);
-    const QString canonical = info.canonicalFilePath();
-    if (!canonical.isEmpty())
-      return canonical;
-
-    const QString parent = info.absoluteDir().canonicalPath();
-    return parent.isEmpty() ? QDir::cleanPath(info.absoluteFilePath()) : QDir(parent).filePath(info.fileName());
-  };
-  const QString report_path = normalizedPath(QString::fromStdString(file));
-  for (int i = 0; i < tree->topLevelItemCount(); ++i)
-  {
-    const auto item = tree->topLevelItem(i);
-    const QString image = item->data(0, IMAGE_FILE_NAME_ROLE).toString();
-    const QString pose = item->data(0, POSE_FILE_NAME_ROLE).toString();
-    if (report_path == normalizedPath(image) || (!pose.isEmpty() && report_path == normalizedPath(pose)))
-      throw ICalException("Observation report path must differ from image and pose paths: '" + file + "'");
-  }
+  validateObservationOutputPaths(nullptr, nullptr, file.c_str());
 
   QSaveFile output(QString::fromStdString(file));
   if (!output.open(QIODevice::WriteOnly | QIODevice::Text))
