@@ -55,6 +55,8 @@ public:
    */
   void loadObservations(const std::string& observations_file);
 
+  void validateObservationOutputPaths(const char* result, const char* ros, const char* report) const;
+
   /** @brief Saves the displayed observation paths and quality diagnostics as CSV. */
   void saveObservationReport(const std::string& file) const;
 

@@ -128,6 +128,8 @@ int main(int argc, char** argv)
                                                              argv + output->positional_argc);
       cal->loadConfig(argv[first_file]);
       cal->loadObservations(argv[first_file + 1]);
+      if (output)
+        cal->validateObservationOutputPaths(argv[first_file + 2], nullptr, output->observation_report);
       cal->calibrate();
       if (headless && !cal->calibrationConverged())
       {

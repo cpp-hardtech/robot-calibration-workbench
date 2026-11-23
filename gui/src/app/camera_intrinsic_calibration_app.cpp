@@ -125,17 +125,17 @@ int main(int argc, char** argv)
     try
     {
       const int first_file = headless ? 2 : 1;
+      const char* ros = headless && output->positional_argc > first_file + 3 ? argv[first_file + 3] : nullptr;
       if (headless)
-      {
-        const char* ros = output->positional_argc > first_file + 3 ? argv[first_file + 3] : nullptr;
         calibration_workbench::validateHeadlessResultPaths(argv[first_file], argv[first_file + 1], argv[first_file + 2],
                                                            ros);
-      }
       if (output)
         calibration_workbench::validateObservationReportPath(output->observation_report, argv + 2,
                                                              argv + output->positional_argc);
       cal->loadConfig(argv[first_file]);
       cal->loadObservations(argv[first_file + 1]);
+      if (output)
+        cal->validateObservationOutputPaths(argv[first_file + 2], ros, output->observation_report);
       cal->calibrate();
       if (headless && !cal->calibrationConverged())
       {
