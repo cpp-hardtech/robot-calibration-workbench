@@ -55,12 +55,14 @@ std::ostream& operator<<(std::ostream& stream, const PnPResult& result);
 
 /**
  * @brief Performs the PnP optimization
+ * @throws OptimizationException if the observations contain fewer than three noncollinear target points
  * @ingroup optimizations_pnp
  */
 PnPResult optimize(const PnPProblem& params);
 
 /**
  * @brief Performs the PnP 3D optimization
+ * @throws OptimizationException if the observations contain fewer than three noncollinear target points
  * @ingroup optimizations_pnp
  */
 PnPResult optimize(const PnPProblem3D& params);

@@ -295,6 +295,84 @@ TEST(PnP, RecoversRotationFromIdentityAndNearIdentity)
   }
 }
 
+class PnPTargetGeometryTest : public ::testing::Test
+{
+protected:
+  PnPTargetGeometryTest()
+  {
+    image_problem.intr = intrinsics;
+    image_problem.camera_to_target_guess = expected;
+    point_problem.camera_to_target_guess = expected;
+    multi_problem.base_to_target_guess = expected;
+    multi_problem.intr.assign(3, intrinsics);
+    multi_problem.base_to_camera.assign(3, Eigen::Isometry3d::Identity());
+    multi_problem.base_to_camera[1].translate(Eigen::Vector3d(0.18, 0.02, 0.0));
+    multi_problem.image_observations.resize(3);
+  }
+
+  void addPoint(const Eigen::Vector3d& target_point, std::size_t camera_index)
+  {
+    const Eigen::Vector3d base_point = expected * target_point;
+    image_problem.correspondences.emplace_back(projectPoint(intrinsics, base_point), target_point);
+    point_problem.correspondences.emplace_back(base_point, target_point);
+    const Eigen::Vector3d camera_point = multi_problem.base_to_camera[camera_index].inverse() * base_point;
+    multi_problem.image_observations[camera_index].emplace_back(projectPoint(intrinsics, camera_point), target_point);
+  }
+
+  const CameraIntrinsics intrinsics{ { 810.0, 835.0, 320.0, 240.0 } };
+  const Eigen::Isometry3d expected =
+      Eigen::Translation3d(0.06, -0.04, 1.25) * Eigen::AngleAxisd(0.35, Eigen::Vector3d(0.2, 0.45, 0.8).normalized());
+  PnPProblem image_problem;
+  PnPProblem3D point_problem;
+  MultiCameraPnPProblem multi_problem;
+};
+
+TEST_F(PnPTargetGeometryTest, RejectsRepeatedTargetPoints)
+{
+  for (std::size_t i = 0; i < 4; ++i)
+    addPoint(Eigen::Vector3d(0.01, 0.03, 0.0), i % 2);
+
+  EXPECT_THROW(optimize(image_problem), OptimizationException);
+  EXPECT_THROW(optimize(point_problem), OptimizationException);
+  EXPECT_THROW(optimize(multi_problem), OptimizationException);
+}
+
+TEST_F(PnPTargetGeometryTest, RejectsCollinearTargetPoints)
+{
+  const Eigen::Vector3d origin(0.015625, 0.03125, 0.0);
+  const Eigen::Vector3d step(0.125, 0.0625, 0.0);
+  for (std::size_t i = 0; i < 4; ++i)
+    addPoint(origin + static_cast<double>(i) * step, i % 2);
+
+  EXPECT_THROW(optimize(image_problem), OptimizationException);
+  EXPECT_THROW(optimize(point_problem), OptimizationException);
+  EXPECT_THROW(optimize(multi_problem), OptimizationException);
+}
+
+TEST_F(PnPTargetGeometryTest, RecoversNoncollinearPlanarTarget)
+{
+  addPoint(Eigen::Vector3d(0.0, 0.0, 0.0), 0);
+  addPoint(Eigen::Vector3d(0.0, 0.0, 0.0), 0);
+  addPoint(Eigen::Vector3d(0.14, 0.0, 0.0), 0);
+  addPoint(Eigen::Vector3d(0.0, 0.12, 0.0), 1);
+  addPoint(Eigen::Vector3d(0.15, 0.12, 0.0), 1);
+
+  const auto guess = expected * Eigen::AngleAxisd(0.2, Eigen::Vector3d::UnitX());
+  image_problem.camera_to_target_guess = guess;
+  point_problem.camera_to_target_guess = guess;
+  multi_problem.base_to_target_guess = guess;
+
+  const auto image_result = optimize(image_problem);
+  const auto point_result = optimize(point_problem);
+  const auto multi_result = optimize(multi_problem);
+  EXPECT_TRUE(image_result.converged);
+  EXPECT_TRUE(point_result.converged);
+  EXPECT_TRUE(multi_result.converged);
+  EXPECT_TRUE(image_result.camera_to_target.isApprox(expected, 1e-6));
+  EXPECT_TRUE(point_result.camera_to_target.isApprox(expected, 1e-6));
+  EXPECT_TRUE(multi_result.base_to_target.isApprox(expected, 1e-6));
+}
+
 int main(int argc, char** argv)
 {
   testing::InitGoogleTest(&argc, argv);

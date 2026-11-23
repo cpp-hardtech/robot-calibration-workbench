@@ -1,3 +1,5 @@
+#include "pnp_target_geometry.h"
+
 #include <calibration_workbench/optimizations/pnp.h>
 #include <calibration_workbench/optimizations/pnp_cost.h>
 #include <calibration_workbench/optimizations/covariance_analysis.h>
@@ -35,10 +37,13 @@ PnPResult optimize(const PnPProblem& params)
   Eigen::Vector3d cam_to_tgt_translation(params.camera_to_target_guess.translation());
 
   ceres::Problem problem;
+  detail::PnPTargetGeometry target_geometry;
 
   // For each 3D point seen in the 2D image
   for (const auto& corr : params.correspondences)
   {
+    target_geometry.addPoint(corr.in_target);
+
     // Allocate Ceres data structures - ownership is taken by the ceres
     // Problem data structure
     auto* cost_fn = new PnPCost(params.intr, corr.in_target, corr.in_image);
@@ -49,6 +54,8 @@ PnPResult optimize(const PnPProblem& params)
   }
 
   ceres::Solver::Summary summary;
+  target_geometry.validate();
+
   ceres::Solver::Options options;
   ceres::Solve(options, &problem, &summary);
 
@@ -106,10 +113,13 @@ PnPResult optimize(const PnPProblem3D& params)
   Eigen::Vector3d cam_to_tgt_translation(params.camera_to_target_guess.translation());
 
   ceres::Problem problem;
+  detail::PnPTargetGeometry target_geometry;
 
   // only one loop, for correspondences
   for (const auto& corr : params.correspondences)  // For each 3D point seen in the 3D image
   {
+    target_geometry.addPoint(corr.in_target);
+
     // Allocate Ceres data structures - ownership is taken by the ceres
     // Problem data structure
 
@@ -119,6 +129,8 @@ PnPResult optimize(const PnPProblem3D& params)
 
     problem.AddResidualBlock(cost_block, nullptr, cam_to_tgt_angle_axis.data(), cam_to_tgt_translation.data());
   }
+
+  target_geometry.validate();
 
   ceres::Solver::Options options;
   ceres::Solver::Summary summary;
