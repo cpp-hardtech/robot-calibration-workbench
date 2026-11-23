@@ -239,3 +239,25 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET ${PROJECT_NAME}_camera_intrinsi
       "${CMAKE_CURRENT_SOURCE_DIR}/headless_calibration_workflow.cmake")
   set_tests_properties(HeadlessCalibration.ObservationWorkflow PROPERTIES TIMEOUT 30)
 endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET ${PROJECT_NAME}_camera_intrinsic_calibration_app)
+  set(intrinsic_app ${PROJECT_NAME}_camera_intrinsic_calibration_app)
+  set(resolution_fixture ${PROJECT_NAME}_intrinsic_resolution_fixture)
+  set(plugin_target ${PROJECT_NAME}_plugins_opencv)
+  add_executable(${resolution_fixture} intrinsic_resolution_fixture.cpp)
+  target_link_libraries(${resolution_fixture} PRIVATE ${PROJECT_NAME}_target_finders_opencv)
+  add_dependencies(
+    run_tests
+    ${intrinsic_app}
+    ${resolution_fixture}
+    ${plugin_target})
+  add_test(
+    NAME HeadlessCalibration.IntrinsicObservationResolution
+    COMMAND
+      "${CMAKE_COMMAND}" "-DINTRINSIC_APP=$<TARGET_FILE:${intrinsic_app}>"
+      "-DRESOLUTION_FIXTURE=$<TARGET_FILE:${resolution_fixture}>" "-DPLUGIN_DIR=$<TARGET_FILE_DIR:${plugin_target}>"
+      "-DSAMPLE_DIR=${PROJECT_SOURCE_DIR}/examples/data/test_set_10x10"
+      "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/intrinsic_observation_resolution" -P
+      "${CMAKE_CURRENT_SOURCE_DIR}/intrinsic_observation_resolution.cmake")
+  set_tests_properties(HeadlessCalibration.IntrinsicObservationResolution PROPERTIES TIMEOUT 30)
+endif()

@@ -21,6 +21,15 @@
 
 namespace calibration_workbench
 {
+namespace
+{
+class MixedImageResolutionException : public ICalException
+{
+public:
+  using ICalException::ICalException;
+};
+}  // namespace
+
 static CameraIntrinsicResult optimizeOpenCV(const CameraIntrinsicProblem& params, const cv::Size& image_size)
 {
   std::vector<std::vector<cv::Vec3f>> object_points;
@@ -333,6 +342,14 @@ void CameraIntrinsicCalibrationWidget::calibrate()
       {
         if (problem.image_observations.empty())
           image_size = image.size();
+        else if (image.size() != image_size)
+        {
+          const std::string message = "Mixed image resolutions: image '" + image_file.toStdString() + "' is " +
+                                      std::to_string(image.cols) + "x" + std::to_string(image.rows) + " (expected " +
+                                      std::to_string(image_size.width) + "x" + std::to_string(image_size.height) + ")";
+          error(item, QString::fromStdString(message));
+          throw MixedImageResolutionException(message);
+        }
 
         problem.image_observations.push_back(correspondence_set);
         if (problem.use_extrinsic_guesses)
@@ -349,6 +366,10 @@ void CameraIntrinsicCalibrationWidget::calibrate()
       // Update the tree widget
       info(features_item, QString::number(correspondence_set.size()));
       info(homography_item, QString::number(homography_error_mean));
+    }
+    catch (const MixedImageResolutionException&)
+    {
+      throw;
     }
     catch (const std::exception& ex)
     {
