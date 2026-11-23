@@ -32,7 +32,8 @@ CovarianceResult computeCovarianceResults(const Eigen::MatrixXd& cov_matrix,
 /**
  * @brief Given a covariance matrix, calculate the matrix of standard deviations and correlation coefficients.
  * @param covariance_matrix The covariance matrix
- * @return Matrix of standard deviations (diagonal elements) and correlation coefficents (off-diagonal elements).
+ * @return Matrix of standard deviations (diagonal elements) and correlation coefficients (off-diagonal elements).
+ * Off-diagonal entries involving a zero standard deviation are reported as zero.
  * @throw CovarianceException if @p covariance_matrix is not square.
  */
 Eigen::MatrixXd computeCorrelationsFromCovariance(const Eigen::MatrixXd& covariance_matrix);

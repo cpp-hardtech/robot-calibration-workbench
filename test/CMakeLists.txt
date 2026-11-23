@@ -75,6 +75,13 @@ add_executable(${PROJECT_NAME}_covariance_tests covariance_utest.cpp)
 target_link_libraries(${PROJECT_NAME}_covariance_tests PRIVATE ${PROJECT_NAME}_test_support GTest::GTest GTest::Main)
 add_dependencies(run_tests ${PROJECT_NAME}_covariance_tests)
 
+# Covariance report
+add_executable(${PROJECT_NAME}_covariance_report_tests covariance_report_utest.cpp)
+target_link_libraries(${PROJECT_NAME}_covariance_report_tests PRIVATE ${PROJECT_NAME}_optimizations GTest::GTest
+                                                                      GTest::Main)
+add_gtest_discover_tests(${PROJECT_NAME}_covariance_report_tests)
+add_dependencies(run_tests ${PROJECT_NAME}_covariance_report_tests)
+
 # Homography
 add_executable(${PROJECT_NAME}_homography_tests homography_utest.cpp)
 target_link_libraries(
@@ -179,6 +186,7 @@ install(
   TARGETS ${PROJECT_NAME}_test_support
           ${PROJECT_NAME}_conversion_tests
           ${PROJECT_NAME}_covariance_tests
+          ${PROJECT_NAME}_covariance_report_tests
           ${PROJECT_NAME}_extrinsic_multi_static_camera_tests
           ${PROJECT_NAME}_extrinsic_hand_eye_tests
           ${PROJECT_NAME}_dh_parameter_tests
