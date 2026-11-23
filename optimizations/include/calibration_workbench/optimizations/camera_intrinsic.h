@@ -25,6 +25,8 @@ struct CameraIntrinsicProblem
 
 /**
  * @brief Results of the camera intrinsic calibration
+ * @details The cost fields store one quarter of the squared per-point pixel reprojection RMS.
+ * An unavailable initial cost is stored as positive infinity.
  * @ingroup optimizations_camera_intrinsic
  */
 struct CameraIntrinsicResult

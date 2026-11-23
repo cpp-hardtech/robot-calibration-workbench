@@ -137,9 +137,18 @@ YAML::Node toROSFormat(const CameraIntrinsicResult& result, const int image_widt
 
 std::ostream& operator<<(std::ostream& stream, const CameraIntrinsicResult& result)
 {
-  stream << "Optimization " << (result.converged ? "converged" : "did not converge") << "\n"
-         << "Initial cost per observation (pixels): " << std::sqrt(result.initial_cost_per_obs) << "\n"
-         << "Final cost per observation (pixels): " << std::sqrt(result.final_cost_per_obs);
+  const auto print_rms = [&stream](const char* stage, double cost) {
+    stream << stage << " reprojection RMS (pixels): ";
+    if (std::isfinite(cost) && cost >= 0.0)
+      stream << 2.0 * std::sqrt(cost);
+    else
+      stream << "unavailable";
+  };
+
+  stream << "Optimization " << (result.converged ? "converged" : "did not converge") << "\n";
+  print_rms("Initial", result.initial_cost_per_obs);
+  stream << "\n";
+  print_rms("Final", result.final_cost_per_obs);
   if (result.converged)
   {
     stream << "\n"

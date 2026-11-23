@@ -59,7 +59,7 @@ static CameraIntrinsicResult optimizeOpenCV(const CameraIntrinsicProblem& params
   CameraIntrinsicResult result;
   result.converged = true;
   result.initial_cost_per_obs = std::numeric_limits<double>::infinity();
-  result.final_cost_per_obs = rms_error;
+  result.final_cost_per_obs = 0.25 * rms_error * rms_error;
 
   // Intrinsics
   result.intrinsics.fx() = camera_matrix.at<double>(0, 0);
