@@ -128,6 +128,20 @@ guesses require both files.
 
 The applications exit after saving a converged result and report calibration errors to standard error.
 
+### Validate observations before calibration
+
+Use `--validate-only` to check images and poses, detect features, and apply the calibration's
+homography threshold. The command writes the same observation-quality CSV as calibration.
+
+```bash
+calibration_workbench_camera_intrinsic_calibration_app --validate-only config.yaml observations.yaml report.csv
+calibration_workbench_extrinsic_hand_eye_calibration_app --validate-only config.yaml observations.yaml report.csv
+```
+
+The command exits with 0 when it writes the report with at least one usable observation. If every
+observation is rejected, it writes the rejection reasons and exits with 1. Invalid or empty input
+and report-write errors also exit with 1. Validation does not solve a calibration or write result files.
+
 ## Docker
 
 A container definition and a Compose file are provided under `docker/`. The Compose file

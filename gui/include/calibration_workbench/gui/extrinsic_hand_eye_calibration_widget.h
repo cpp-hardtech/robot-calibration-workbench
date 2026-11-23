@@ -1,6 +1,9 @@
 #pragma once
 
+#include <calibration_workbench/core/types.h>
 #include <calibration_workbench/gui/camera_calibration_data_manager_widget.h>
+
+#include <cstddef>
 
 class QToolBar;
 
@@ -37,6 +40,9 @@ public:
    */
   void calibrate();
 
+  /** @brief Populates observation diagnostics and returns the number of usable observations. */
+  std::size_t validateObservations();
+
   /** @brief Returns whether the current calibration result converged. */
   bool calibrationConverged() const;
 
@@ -72,6 +78,9 @@ protected:
   void onSaveResults();
 
   std::shared_ptr<ExtrinsicHandEyeResult> result_;
+
+private:
+  Observation2D3D::Set collectObservations();
 };
 
 }  // namespace calibration_workbench

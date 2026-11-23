@@ -1,7 +1,7 @@
 #include <calibration_workbench/gui/camera_intrinsic_calibration_widget.h>
 #include <calibration_workbench/gui/aspect_ratio_pixmap_label.h>
 
-#include "headless_output_arguments.h"
+#include "headless_calibration.h"
 
 #include "headless_result_paths.h"
 
@@ -23,7 +23,15 @@ void handleSignal(int /*sig*/) { QApplication::instance()->quit(); }
 
 int main(int argc, char** argv)
 {
-  const bool headless = argc > 1 && std::string_view(argv[1]) == "--headless";
+  const std::string_view mode = argc > 1 ? argv[1] : "";
+  const bool headless = mode == "--headless";
+  const bool validation_only = mode == "--validate-only";
+  if (validation_only && (argc != 5 || argv[4][0] == '\0'))
+  {
+    std::cerr << "Usage: " << argv[0] << " --validate-only config.yaml observations.yaml report.csv\n";
+    return 1;
+  }
+
   const auto output = headless ? calibration_workbench::parseHeadlessOutputArguments(argc, argv, 6) : std::nullopt;
   if (headless && !output)
   {
@@ -34,9 +42,10 @@ int main(int argc, char** argv)
 
   int qt_argc = 1;
   char* qt_argv[] = { argv[0], nullptr };
-  if (headless)
+  const bool non_interactive = headless || validation_only;
+  if (non_interactive)
     qputenv("QT_QPA_PLATFORM", "offscreen");
-  QApplication app(headless ? qt_argc : argc, headless ? qt_argv : argv);
+  QApplication app(non_interactive ? qt_argc : argc, non_interactive ? qt_argv : argv);
 
   signal(SIGINT, handleSignal);
   signal(SIGTERM, handleSignal);
@@ -51,6 +60,9 @@ int main(int argc, char** argv)
   // Create the calibration widget
   auto cal = new calibration_workbench::CameraIntrinsicCalibrationWidget(window);
   cal->action_use_extrinsic_guesses->setChecked(true);
+
+  if (validation_only)
+    return calibration_workbench::runObservationValidation(*cal, argv);
 
   // Add the calibration widget as a docked widget on the left side of the main window
   auto dock = new QDockWidget("Calibration", window);
@@ -120,7 +132,8 @@ int main(int argc, char** argv)
                                                            ros);
       }
       if (output)
-        calibration_workbench::validateObservationReportPath(*output, argv);
+        calibration_workbench::validateObservationReportPath(output->observation_report, argv + 2,
+                                                             argv + output->positional_argc);
       cal->loadConfig(argv[first_file]);
       cal->loadObservations(argv[first_file + 1]);
       cal->calibrate();

@@ -285,7 +285,7 @@ bool CameraIntrinsicCalibrationWidget::requiresObservationPose() const
   return action_use_extrinsic_guesses->isChecked();
 }
 
-void CameraIntrinsicCalibrationWidget::calibrate()
+CameraIntrinsicProblem CameraIntrinsicCalibrationWidget::collectObservations(cv::Size& image_size)
 {
   // Check if there are any observations before continuing
   if (ui_->tree_widget_observations->topLevelItemCount() == 0)
@@ -296,11 +296,7 @@ void CameraIntrinsicCalibrationWidget::calibrate()
 
   // Create the calibration problem
   CameraIntrinsicProblem problem;
-  problem.intrinsics_guess = camera_intrinsics_widget_->save().as<CameraIntrinsics>();
   problem.use_extrinsic_guesses = action_use_extrinsic_guesses->isChecked();
-
-  // Image size of the first observation included in calibration
-  cv::Size image_size;
 
   for (int i = 0; i < ui_->tree_widget_observations->topLevelItemCount(); ++i)
   {
@@ -377,8 +373,23 @@ void CameraIntrinsicCalibrationWidget::calibrate()
     }
   }
 
+  return problem;
+}
+
+std::size_t CameraIntrinsicCalibrationWidget::validateObservations()
+{
+  cv::Size image_size;
+  return collectObservations(image_size).image_observations.size();
+}
+
+void CameraIntrinsicCalibrationWidget::calibrate()
+{
+  cv::Size image_size;
+  auto problem = collectObservations(image_size);
   if (problem.image_observations.empty())
     throw ICalException("No usable observations for calibration");
+
+  problem.intrinsics_guess = camera_intrinsics_widget_->save().as<CameraIntrinsics>();
 
   // Solve the calibration problem
   if (action_use_opencv->isChecked())
