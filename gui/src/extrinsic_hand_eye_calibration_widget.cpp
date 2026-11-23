@@ -163,7 +163,7 @@ void ExtrinsicHandEyeCalibrationWidget::loadConfig(const std::string& config_fil
   auto static_camera = getMember<bool>(node, "static_camera");
 
   target_finder_widget_->configure(target_finder_config);
-  camera_intrinsics_widget_->configure(intrinsics);
+  camera_intrinsics_widget_->configureFromConfig(intrinsics, config_file);
   camera_transform_guess_widget_->configure(camera_mount_to_camera);
   target_transform_guess_widget_->configure(target_mount_to_target);
   ui_->double_spin_box_homography_threshold->setValue(homography_threshold);

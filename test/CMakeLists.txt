@@ -229,15 +229,19 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET ${PROJECT_NAME}_camera_intrinsi
     ${intrinsic_app}
     ${hand_eye_app}
     ${plugin_target})
-  add_test(
-    NAME HeadlessCalibration.ObservationWorkflow
-    COMMAND
-      "${CMAKE_COMMAND}" "-DINTRINSIC_APP=$<TARGET_FILE:${intrinsic_app}>"
-      "-DHAND_EYE_APP=$<TARGET_FILE:${hand_eye_app}>" "-DPLUGIN_DIR=$<TARGET_FILE_DIR:${plugin_target}>"
-      "-DSAMPLE_DIR=${PROJECT_SOURCE_DIR}/examples/data/test_set_10x10"
-      "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/headless_calibration_workflow" -P
-      "${CMAKE_CURRENT_SOURCE_DIR}/headless_calibration_workflow.cmake")
-  set_tests_properties(HeadlessCalibration.ObservationWorkflow PROPERTIES TIMEOUT 30)
+  function(add_headless_calibration_test name script)
+    add_test(
+      NAME "${name}"
+      COMMAND
+        "${CMAKE_COMMAND}" "-DINTRINSIC_APP=$<TARGET_FILE:${intrinsic_app}>"
+        "-DHAND_EYE_APP=$<TARGET_FILE:${hand_eye_app}>" "-DPLUGIN_DIR=$<TARGET_FILE_DIR:${plugin_target}>"
+        "-DSAMPLE_DIR=${PROJECT_SOURCE_DIR}/examples/data/test_set_10x10"
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/${script}" -P "${CMAKE_CURRENT_SOURCE_DIR}/${script}.cmake")
+    set_tests_properties("${name}" PROPERTIES TIMEOUT 30)
+  endfunction()
+
+  add_headless_calibration_test(HeadlessCalibration.ObservationWorkflow headless_calibration_workflow)
+  add_headless_calibration_test(HeadlessCalibration.ROSCameraInfo ros_intrinsics_app_config)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET ${PROJECT_NAME}_camera_intrinsic_calibration_app)

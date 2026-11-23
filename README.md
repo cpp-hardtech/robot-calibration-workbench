@@ -74,6 +74,19 @@ Use `calibration_workbench::fromROSFormat(YAML::LoadFile(path))` from
 `plumb_bob` distortion. The result contains the camera name, image dimensions, intrinsics, and distortion
 coefficients.
 
+The camera intrinsic application also reads this file from its configuration:
+
+```yaml
+intrinsics_guess:
+  ros_camera_info: cameras/camera.yaml
+```
+
+Use the same `ros_camera_info` entry under `intrinsics` in the hand-eye application. The intrinsic
+application also accepts `intrinsics` as an alias for `intrinsics_guess`. Paths are relative to the
+application configuration file. This entry replaces the inline `fx`, `fy`, `cx`, and `cy` fields.
+Both applications use these four pinhole values from the ROS camera matrix. The distortion and
+rectification values are omitted from the application's camera model.
+
 ### Camera intrinsics after cropping or resizing
 
 `CameraIntrinsics::remapImageCoordinates` returns calibration parameters in the new image coordinates.
