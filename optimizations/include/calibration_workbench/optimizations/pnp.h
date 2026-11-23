@@ -55,7 +55,8 @@ std::ostream& operator<<(std::ostream& stream, const PnPResult& result);
 
 /**
  * @brief Performs the PnP optimization
- * @throws OptimizationException if the observations contain fewer than three noncollinear target points
+ * @throws OptimizationException if the observations contain fewer than three noncollinear target points, or if a
+ * converged pose places an observed point at non-positive depth or outside finite camera coordinates
  * @ingroup optimizations_pnp
  */
 PnPResult optimize(const PnPProblem& params);

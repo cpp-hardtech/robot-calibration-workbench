@@ -1,3 +1,4 @@
+#include "pnp_depth_validation.h"
 #include "pnp_target_geometry.h"
 
 #include <calibration_workbench/optimizations/pnp.h>
@@ -65,6 +66,9 @@ PnPResult optimize(const PnPProblem& params)
   result.final_cost_per_obs = summary.final_cost / summary.num_residuals;
   result.camera_to_target = Eigen::Translation3d(cam_to_tgt_translation) *
                             Eigen::AngleAxisd(cam_to_tgt_angle_axis.norm(), cam_to_tgt_angle_axis.normalized());
+
+  if (result.converged)
+    detail::validatePnPDepth(result.camera_to_target, params.correspondences, 0);
 
   // compose labels "camera_to_target_x", etc.
   std::vector<std::string> labels_camera_to_target_guess_translation;
