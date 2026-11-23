@@ -8,6 +8,9 @@ namespace calibration_workbench
 {
 std::tuple<double, double> computeStats(const std::vector<double>& v)
 {
+  if (v.size() < 2)
+    throw ICalException("Sample statistics require at least two values");
+
   double mean = std::accumulate(v.begin(), v.end(), 0.0) / v.size();
   double var = 0.0;
   std::for_each(std::begin(v), std::end(v), [&](const double d) { var += (d - mean) * (d - mean); });
@@ -17,6 +20,9 @@ std::tuple<double, double> computeStats(const std::vector<double>& v)
 
 Eigen::Quaterniond computeQuaternionMean(const std::vector<Eigen::Quaterniond>& quaterns)
 {
+  if (quaterns.empty())
+    throw ICalException("Quaternion mean requires at least one orientation");
+
   Eigen::Matrix4d M = Eigen::Matrix4d::Zero();
 
   for (const Eigen::Quaterniond& q : quaterns)
@@ -40,6 +46,9 @@ Eigen::Quaterniond computeQuaternionMean(const std::vector<Eigen::Quaterniond>& 
 
 QuaternionStats computeQuaternionStats(const std::vector<Eigen::Quaterniond>& quaternions)
 {
+  if (quaternions.size() < 2)
+    throw ICalException("Quaternion sample statistics require at least two orientations");
+
   QuaternionStats q_stats;
   q_stats.mean = computeQuaternionMean(quaternions);
 

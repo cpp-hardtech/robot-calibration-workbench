@@ -24,6 +24,7 @@ std::ostream& operator<<(std::ostream& stream, const ExtrinsicHandEyeAnalysisSta
 /**
  * @brief Analyzes the results of the hand eye calibration by measuring the difference between the calibrated camera to
  * target transform and a PnP optimization estimation of the same transform
+ * @throws ICalException when fewer than two observations are supplied
  * @ingroup analysis_extrinsic_hand_eye
  */
 ExtrinsicHandEyeAnalysisStats analyzeResults(const ExtrinsicHandEyeProblem2D3D& problem,
@@ -43,6 +44,7 @@ struct ExtrinsicHandEye3dProjectionStats
 std::ostream& operator<<(std::ostream& stream, const ExtrinsicHandEye3dProjectionStats& stats);
 
 /**
+ * @throws ICalException when fewer than two feature errors are available
  * @ingroup analysis_extrinsic_hand_eye
  */
 ExtrinsicHandEye3dProjectionStats analyze3dProjectionError(const ExtrinsicHandEyeProblem2D3D& problem,

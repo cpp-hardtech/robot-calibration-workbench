@@ -77,6 +77,9 @@ IntrinsicCalibrationAccuracyResult measureIntrinsicCalibrationAccuracy(
     const Eigen::Isometry3d& camera_mount_to_camera, const Eigen::Isometry3d& target_mount_to_target,
     const Eigen::Isometry3d& camera_base_to_target_base, const double pnp_sq_error_threshold)
 {
+  if (observations.size() < 2)
+    throw ICalException("Intrinsic accuracy analysis requires at least two observations");
+
   // Check that the observations are all the same size
   // Assuming that each observation's correspondences are ordered the same
   for (std::size_t i = 0; i < observations.size() - 1; ++i)

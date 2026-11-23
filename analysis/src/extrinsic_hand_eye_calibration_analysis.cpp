@@ -1,6 +1,7 @@
 #include <calibration_workbench/analysis/extrinsic_hand_eye_calibration_analysis.h>
 #include <calibration_workbench/analysis/statistics.h>
 #include <calibration_workbench/analysis/projection.h>
+#include <calibration_workbench/core/exceptions.h>
 #include <calibration_workbench/optimizations/extrinsic_hand_eye.h>
 #include <calibration_workbench/optimizations/pnp.h>
 
@@ -18,6 +19,9 @@ std::ostream& operator<<(std::ostream& stream, const ExtrinsicHandEyeAnalysisSta
 ExtrinsicHandEyeAnalysisStats analyzeResults(const ExtrinsicHandEyeProblem2D3D& problem,
                                              const ExtrinsicHandEyeResult& opt_result)
 {
+  if (problem.observations.size() < 2)
+    throw ICalException("Hand-eye pose analysis requires at least two observations");
+
   // Create accumulators to more easily calculate the mean and standard deviation of the position and orientation
   // differences
   std::vector<double> pos_diff_acc, ori_diff_acc;
@@ -70,6 +74,8 @@ ExtrinsicHandEye3dProjectionStats analyze3dProjectionError(const ExtrinsicHandEy
 {
   Eigen::ArrayXd error = compute3DProjectionError(problem.observations, problem.intr, opt_result.camera_mount_to_camera,
                                                   opt_result.target_mount_to_target);
+  if (error.size() < 2)
+    throw ICalException("3D reprojection analysis requires at least two feature errors");
 
   // Compute stats
   ExtrinsicHandEye3dProjectionStats stats;

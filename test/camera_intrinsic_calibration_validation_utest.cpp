@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 #include <calibration_workbench/optimizations/camera_intrinsic.h>
 #include <calibration_workbench/analysis/camera_intrinsic_calibration_analysis.h>
+#include <calibration_workbench/analysis/extrinsic_hand_eye_calibration_analysis.h>
+#include <calibration_workbench/optimizations/extrinsic_hand_eye.h>
 #include <calibration_workbench/core/serialization.h>
 #include <calibration_workbench/core/utils.h>
 #include <calibration_workbench_tests/utilities.h>
@@ -240,6 +242,72 @@ TEST(CameraIntrinsicCalibrationValidation, RoundTripsIntrinsicProblemAndLoadsLeg
   document["intrisics_guess"] = YAML::Clone(document["intrinsics_guess"]);
   document.remove("intrinsics_guess");
   EXPECT_EQ(document.as<CameraIntrinsicProblem>().intrinsics_guess, problem.intrinsics_guess);
+}
+
+static Observation2D3D makeAnalysisObservation(const CameraIntrinsics& intrinsics)
+{
+  Observation2D3D observation;
+  observation.to_camera_mount = Eigen::Isometry3d::Identity();
+  observation.to_target_mount = Eigen::Isometry3d::Identity();
+  observation.to_target_mount.translate(Eigen::Vector3d(0.04, -0.02, 0.85));
+  observation.to_target_mount.rotate(Eigen::AngleAxisd(0.15, Eigen::Vector3d::UnitX()));
+
+  for (int row = 0; row < 4; ++row)
+    for (int col = 0; col < 5; ++col)
+    {
+      const Eigen::Vector3d target_point(0.02 * col, 0.02 * row, 0.0);
+      const Eigen::Vector3d camera_point = observation.to_target_mount * target_point;
+      observation.correspondence_set.emplace_back(projectPoint(intrinsics, camera_point), target_point);
+    }
+  return observation;
+}
+
+TEST(CalibrationAnalysisInputValidation, RejectsInsufficientIntrinsicAccuracyObservations)
+{
+  const CameraIntrinsics intrinsics{ { 600.0, 610.0, 320.0, 240.0 } };
+  const auto identity = Eigen::Isometry3d::Identity();
+  Observation2D3D::Set observations;
+
+  EXPECT_THROW(measureIntrinsicCalibrationAccuracy(observations, intrinsics, identity, identity, identity),
+               ICalException);
+  observations.push_back(makeAnalysisObservation(intrinsics));
+  EXPECT_THROW(measureIntrinsicCalibrationAccuracy(observations, intrinsics, identity, identity, identity),
+               ICalException);
+}
+
+TEST(CalibrationAnalysisInputValidation, RejectsInsufficientHandEyeAnalysisObservations)
+{
+  ExtrinsicHandEyeProblem2D3D problem{};
+  problem.intr = CameraIntrinsics{ { 600.0, 610.0, 320.0, 240.0 } };
+  ExtrinsicHandEyeResult result{};
+  result.camera_mount_to_camera = Eigen::Isometry3d::Identity();
+  result.target_mount_to_target = Eigen::Isometry3d::Identity();
+
+  EXPECT_THROW(analyzeResults(problem, result), ICalException);
+  problem.observations.push_back(makeAnalysisObservation(problem.intr));
+  EXPECT_THROW(analyzeResults(problem, result), ICalException);
+
+  problem.observations.push_back(problem.observations.front());
+  EXPECT_NEAR(analyzeResults(problem, result).pos_diff_stdev, 0.0, 1e-10);
+}
+
+TEST(CalibrationAnalysisInputValidation, RequiresTwoReprojectionErrors)
+{
+  ExtrinsicHandEyeProblem2D3D problem{};
+  problem.intr = CameraIntrinsics{ { 600.0, 610.0, 320.0, 240.0 } };
+  ExtrinsicHandEyeResult result{};
+  result.camera_mount_to_camera = Eigen::Isometry3d::Identity();
+  result.target_mount_to_target = Eigen::Isometry3d::Identity();
+
+  EXPECT_THROW(analyze3dProjectionError(problem, result), ICalException);
+
+  const auto observation = makeAnalysisObservation(problem.intr);
+  problem.observations.push_back(observation);
+  problem.observations.front().correspondence_set.resize(1);
+  EXPECT_THROW(analyze3dProjectionError(problem, result), ICalException);
+
+  problem.observations.front().correspondence_set.push_back(observation.correspondence_set[1]);
+  EXPECT_NEAR(analyze3dProjectionError(problem, result).stdev, 0.0, 1e-10);
 }
 
 int main(int argc, char** argv)
