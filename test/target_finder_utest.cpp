@@ -7,7 +7,9 @@
 // Analysis
 #include <calibration_workbench/analysis/homography_analysis.h>
 
+#include <calibration_workbench/core/exceptions.h>
 #include <gtest/gtest.h>
+#include <limits>
 #include <memory>
 #include <opencv2/aruco.hpp>
 #include <opencv2/core.hpp>
@@ -351,6 +353,51 @@ TEST(ArucoBoardMembershipTest, ignoresMarkersFromOutsideConfiguredBoard)
   ASSERT_EQ(features.size(), target.points.size());
   EXPECT_EQ(features.count(foreign_id), 0);
   EXPECT_EQ(target.createCorrespondences(features).size(), 4 * target.points.size());
+}
+
+TEST(MarkerBoardConfigurationTest, acceptsSupportedDictionaryBounds)
+{
+  for (const auto id : { cv::aruco::DICT_4X4_50, cv::aruco::DICT_APRILTAG_36h11 })
+  {
+    const auto dictionary = cv::aruco::getPredefinedDictionary(id);
+    const ArucoGridTarget aruco(2, 3, 0.035f, 0.010f, id);
+    const CharucoGridTarget charuco(5, 7, 0.036195f, 0.018256f, id);
+    EXPECT_EQ(aruco.board->dictionary->bytesList.rows, dictionary->bytesList.rows);
+    EXPECT_EQ(charuco.board->dictionary->bytesList.rows, dictionary->bytesList.rows);
+  }
+}
+
+TEST(MarkerBoardConfigurationTest, rejectsUnknownDictionaryIds)
+{
+  for (const int id : { -1, static_cast<int>(cv::aruco::DICT_APRILTAG_36h11) + 1 })
+  {
+    EXPECT_THROW(ArucoGridTarget(2, 3, 0.035f, 0.010f, id), ICalException);
+    EXPECT_THROW(CharucoGridTarget(5, 7, 0.036195f, 0.018256f, id), ICalException);
+  }
+}
+
+TEST(MarkerBoardConfigurationTest, acceptsBoardsAtDictionaryCapacity)
+{
+  const ArucoGridTarget aruco(5, 10, 0.035f, 0.010f, cv::aruco::DICT_4X4_50);
+  EXPECT_EQ(aruco.board->ids.size(), 50u);
+
+  const CharucoGridTarget charuco(25, 47, 0.036195f, 0.018256f, cv::aruco::DICT_APRILTAG_36h11);
+  EXPECT_EQ(charuco.board->ids.size(), 587u);
+}
+
+TEST(MarkerBoardConfigurationTest, rejectsBoardsOverDictionaryCapacity)
+{
+  constexpr auto dictionary = cv::aruco::DICT_4X4_50;
+  EXPECT_THROW(ArucoGridTarget(5, 11, 0.035f, 0.010f, dictionary), ICalException);
+  EXPECT_THROW(CharucoGridTarget(10, 11, 0.036195f, 0.018256f, dictionary), ICalException);
+}
+
+TEST(CircleGridConfigurationTest, requiresFinitePositiveSpacing)
+{
+  EXPECT_NO_THROW(ModifiedCircleGridTarget(10, 10, 0.025));
+  for (const double spacing :
+       { 0.0, -0.025, std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::infinity() })
+    EXPECT_THROW(ModifiedCircleGridTarget(10, 10, spacing), ICalException);
 }
 
 int main(int argc, char** argv)

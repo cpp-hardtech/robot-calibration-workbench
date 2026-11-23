@@ -4,6 +4,7 @@
 #include <calibration_workbench/core/serialization.h>
 
 #include <opencv2/calib3d.hpp>
+#include <cmath>
 #include <memory>
 
 namespace calibration_workbench
@@ -396,6 +397,8 @@ static std::vector<cv::Point2d> extractModifiedCircleGrid(const cv::Mat& image, 
 ModifiedCircleGridTarget::ModifiedCircleGridTarget(const unsigned rows_, const unsigned cols_, const double spacing_)
   : rows(rows_), cols(cols_), spacing(spacing_)
 {
+  if (!std::isfinite(spacing) || spacing <= 0.0)
+    throw ICalException("Circle grid spacing must be finite and positive");
 }
 
 bool ModifiedCircleGridTarget::operator==(const ModifiedCircleGridTarget& other) const
