@@ -373,6 +373,102 @@ TEST_F(PnPTargetGeometryTest, RecoversNoncollinearPlanarTarget)
   EXPECT_TRUE(multi_result.base_to_target.isApprox(expected, 1e-6));
 }
 
+class PnPDepthTest : public ::testing::Test
+{
+protected:
+  PnPDepthTest()
+  {
+    image_problem.intr = intrinsics;
+    image_problem.camera_to_target_guess = expected;
+    for (int row = 0; row < 4; ++row)
+    {
+      for (int col = 0; col < 5; ++col)
+      {
+        const Eigen::Vector3d point((col - 2) * 0.04, (row - 1.5) * 0.04, 0.0);
+        const Eigen::Vector3d camera_point = expected * point;
+        image_problem.correspondences.emplace_back(projectPoint(intrinsics, camera_point), point);
+      }
+    }
+  }
+
+  MultiCameraPnPProblem makeMultiCameraProblem(bool reverse_camera_observes) const
+  {
+    MultiCameraPnPProblem problem;
+    problem.base_to_target_guess = expected;
+    const Eigen::Isometry3d reverse_camera =
+        Eigen::Translation3d(0.16, -0.05, -0.075) * Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitY());
+    problem.base_to_camera = { Eigen::Isometry3d::Identity(), reverse_camera };
+    problem.intr.assign(2, intrinsics);
+    problem.image_observations = { image_problem.correspondences, {} };
+
+    if (reverse_camera_observes)
+    {
+      for (const auto& observation : image_problem.correspondences)
+      {
+        const Eigen::Vector3d camera_point = reverse_camera.inverse() * expected * observation.in_target;
+        problem.image_observations[1].emplace_back(projectPoint(intrinsics, camera_point), observation.in_target);
+      }
+    }
+    return problem;
+  }
+
+  const CameraIntrinsics intrinsics{ { 810.0, 835.0, 320.0, 240.0 } };
+  const Eigen::Isometry3d expected =
+      Eigen::Translation3d(0.055, -0.02, 0.86) * Eigen::AngleAxisd(0.33, Eigen::Vector3d(0.7, 0.35, 0.2).normalized());
+  PnPProblem image_problem;
+};
+
+TEST_F(PnPDepthTest, RejectsMirroredPoseWithIdenticalProjection)
+{
+  Eigen::Isometry3d mirror = expected * Eigen::AngleAxisd(M_PI, Eigen::Vector3d::UnitZ());
+  mirror.translation() = -expected.translation();
+  for (const auto& observation : image_problem.correspondences)
+  {
+    const Eigen::Vector3d camera_point = mirror * observation.in_target;
+    ASSERT_LT(camera_point.z(), 0.0);
+    ASSERT_TRUE(projectPoint(intrinsics, camera_point).isApprox(observation.in_image, 1e-12));
+  }
+
+  image_problem.camera_to_target_guess = mirror;
+  EXPECT_THROW(optimize(image_problem), OptimizationException);
+}
+
+TEST_F(PnPDepthTest, RecoversPositiveDepthFromGuessWithPointsBehindCamera)
+{
+  Eigen::Isometry3d guess = expected * Eigen::AngleAxisd(-1.5, Eigen::Vector3d::UnitX());
+  guess.translation() = Eigen::Vector3d(0.0, -0.02, 0.043);
+  ASSERT_LT((guess * image_problem.correspondences.back().in_target).z(), 0.0);
+  image_problem.camera_to_target_guess = guess;
+
+  const auto result = optimize(image_problem);
+  EXPECT_TRUE(result.converged);
+  EXPECT_TRUE(result.camera_to_target.isApprox(expected, 1e-6));
+  for (const auto& observation : image_problem.correspondences)
+    EXPECT_GT((result.camera_to_target * observation.in_target).z(), 0.0);
+}
+
+TEST_F(PnPDepthTest, RejectsNegativeDepthInObservingCamera)
+{
+  const auto problem = makeMultiCameraProblem(true);
+  try
+  {
+    optimize(problem);
+    FAIL() << "Expected invalid depth for an observing camera";
+  }
+  catch (const OptimizationException& error)
+  {
+    EXPECT_NE(std::string(error.what()).find("camera 1, observation 0"), std::string::npos);
+  }
+}
+
+TEST_F(PnPDepthTest, IgnoresDepthInCameraWithoutObservations)
+{
+  const auto problem = makeMultiCameraProblem(false);
+  const auto result = optimize(problem);
+  EXPECT_TRUE(result.converged);
+  EXPECT_TRUE(result.base_to_target.isApprox(expected, 1e-6));
+}
+
 int main(int argc, char** argv)
 {
   testing::InitGoogleTest(&argc, argv);

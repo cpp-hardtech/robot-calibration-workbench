@@ -1,3 +1,4 @@
+#include "pnp_depth_validation.h"
 #include "pnp_target_geometry.h"
 
 #include <calibration_workbench/optimizations/multi_camera_pnp.h>
@@ -58,6 +59,17 @@ MultiCameraPnPResult optimize(const MultiCameraPnPProblem& params)
   result.base_to_target = poseCalToEigen(internal_base_to_target);
   result.initial_cost_per_obs = summary.initial_cost / summary.num_residuals;
   result.final_cost_per_obs = summary.final_cost / summary.num_residuals;
+
+  if (result.converged)
+  {
+    for (std::size_t c = 0; c < camera_count; ++c)
+    {
+      const auto& observations = params.image_observations[c];
+      if (!observations.empty())
+        detail::validatePnPDepth(params.base_to_camera[c].inverse() * result.base_to_target, observations, c);
+    }
+  }
+
   return result;
 }
 

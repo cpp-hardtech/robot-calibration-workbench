@@ -71,7 +71,8 @@ struct MultiCameraPnPResult
 
 /**
  * @brief Performs PnP optimization using the observations combined across all cameras
- * @throws OptimizationException if the combined observations contain fewer than three noncollinear target points
+ * @throws OptimizationException if the combined observations contain fewer than three noncollinear target points, or
+ * if a converged pose places an observed point at non-positive depth or outside finite coordinates in its camera
  * @ingroup optimizations_multi_camera_pnp
  */
 MultiCameraPnPResult optimize(const MultiCameraPnPProblem& params);
