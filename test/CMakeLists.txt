@@ -1,5 +1,15 @@
 find_gtest()
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET ${PROJECT_NAME}_gui)
+  set(circle_grid_filter_test ${PROJECT_NAME}_circle_grid_filter_round_trip_test)
+  add_executable(${circle_grid_filter_test} circle_grid_filter_round_trip_test.cpp)
+  target_link_libraries(${circle_grid_filter_test} PRIVATE ${PROJECT_NAME}_gui)
+  add_dependencies(run_tests ${circle_grid_filter_test})
+  add_test(NAME Gui.ModifiedCircleGridFilterRoundTrip
+           COMMAND ${circle_grid_filter_test} "${PROJECT_SOURCE_DIR}/examples/data/test_set_10x10/cal_data.yaml")
+  set_tests_properties(Gui.ModifiedCircleGridFilterRoundTrip PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+endif()
+
 # Build the test support library
 add_library(
   ${PROJECT_NAME}_test_support SHARED

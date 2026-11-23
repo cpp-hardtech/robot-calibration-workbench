@@ -1,6 +1,8 @@
 #include "ui_modified_circle_grid_target_finder.h"
 #include <calibration_workbench/gui/modified_circle_grid_target_finder.h>
-#include <calibration_workbench/core/serialization.h>
+#include <calibration_workbench/target_finders/opencv/circle_detector.h>
+#include <algorithm>
+#include <cstddef>
 
 namespace calibration_workbench
 {
@@ -30,50 +32,43 @@ void ModifiedCircleGridTargetFinderWidget::configure(const YAML::Node& node)
   ui_->colSpinBox->setValue(node["cols"].as<int>());
   ui_->spacingDoubleSpinBox->setValue(node["spacing"].as<double>());
 
-  auto& subnode = node["circle_detector_params"];
+  const auto detector = node["circle_detector_params"];
+  const auto params = detector ? detector.as<CircleDetectorParams>() : CircleDetectorParams{};
+  const auto set_count = [](QSpinBox* box, std::size_t count) {
+    box->setValue(static_cast<int>(std::min(count, static_cast<std::size_t>(box->maximum()))));
+  };
 
-  ui_->minThresholdSpinBox->setValue(subnode["minThreshold"].as<double>());
-  ui_->maxThresholdSpinBox->setValue(subnode["maxThreshold"].as<double>());
-  ui_->numThresholdSpinBox->setValue(subnode["nThresholds"].as<int>());
+  ui_->minThresholdSpinBox->setValue(params.minThreshold);
+  ui_->maxThresholdSpinBox->setValue(params.maxThreshold);
+  set_count(ui_->numThresholdSpinBox, params.nThresholds);
+  set_count(ui_->minRepeatSpinBox, params.minRepeatability);
+  ui_->circleInclusionRadiusDoubleSpinBox->setValue(params.circleInclusionRadius);
+  ui_->maxRadiusDiffDoubleSpinBox->setValue(params.maxRadiusDiff);
+  ui_->maxAvgEllipseErrorDoubleSpinBox->setValue(params.maxAverageEllipseError);
 
-  ui_->minRepeatSpinBox->setValue(subnode["minRepeatability"].as<int>());
-  ui_->circleInclusionRadiusDoubleSpinBox->setValue(subnode["circleInclusionRadius"].as<double>());
-  ui_->maxRadiusDiffDoubleSpinBox->setValue(subnode["maxRadiusDiff"].as<double>());
-  ui_->maxAvgEllipseErrorDoubleSpinBox->setValue(subnode["maxAverageEllipseError"].as<double>());
+  ui_->filterByColorCheckBox->setChecked(params.filterByColor);
+  ui_->frame_filter_color->setEnabled(params.filterByColor);
+  ui_->circleColorSpinBox->setValue(params.circleColor);
 
-  // Filter by color
-  auto filter_by_color = getMember<bool>(subnode, "filterByColor");
-  ui_->filterByColorCheckBox->setChecked(filter_by_color);
-  ui_->frame_filter_color->setEnabled(filter_by_color);
-  ui_->circleColorSpinBox->setValue(getMember<int>(subnode, "circleColor"));
+  ui_->filterByAreaCheckBox->setChecked(params.filterByArea);
+  ui_->frame_filter_area->setEnabled(params.filterByArea);
+  ui_->minAreaDoubleSpinBox->setValue(params.minArea);
+  ui_->maxAreaDoubleSpinBox->setValue(params.maxArea);
 
-  // Filter by area
-  auto filter_by_area = getMember<bool>(subnode, "filterByArea");
-  ui_->filterByAreaCheckBox->setChecked(filter_by_area);
-  ui_->frame_filter_area->setEnabled(filter_by_area);
-  ui_->minAreaDoubleSpinBox->setValue(getMember<double>(subnode, "minArea"));
-  ui_->maxAreaDoubleSpinBox->setValue(getMember<double>(subnode, "maxArea"));
+  ui_->filterByCircularityCheckBox->setChecked(params.filterByCircularity);
+  ui_->frame_filter_circularity->setEnabled(params.filterByCircularity);
+  ui_->minCircularityDoubleSpinBox->setValue(params.minCircularity);
+  ui_->maxCircularityDoubleSpinBox->setValue(params.maxCircularity);
 
-  // Filter by circularity
-  auto filter_by_circularity = getMember<bool>(subnode, "filterByCircularity");
-  ui_->filterByCircularityCheckBox->setChecked(filter_by_circularity);
-  ui_->frame_filter_circularity->setEnabled(filter_by_circularity);
-  ui_->minCircularityDoubleSpinBox->setValue(getMember<double>(subnode, "minCircularity"));
-  ui_->maxCircularityDoubleSpinBox->setValue(getMember<double>(subnode, "maxCircularity"));
+  ui_->filterByInertiaCheckBox->setChecked(params.filterByInertia);
+  ui_->frame_filter_inertia->setEnabled(params.filterByInertia);
+  ui_->minInertiaRatioDoubleSpinBox->setValue(params.minInertiaRatio);
+  ui_->maxInertiaRatioDoubleSpinBox->setValue(params.maxInertiaRatio);
 
-  // Filter by inertia
-  auto filter_by_inertia = getMember<bool>(subnode, "filterByInertia");
-  ui_->filterByInertiaCheckBox->setChecked(filter_by_inertia);
-  ui_->frame_filter_inertia->setEnabled(filter_by_inertia);
-  ui_->minInertiaRatioDoubleSpinBox->setValue(getMember<double>(subnode, "minInertiaRatio"));
-  ui_->maxInertiaRatioDoubleSpinBox->setValue(getMember<double>(subnode, "maxInertiaRatio"));
-
-  // Filter by convexity
-  auto filter_by_convexity = getMember<bool>(subnode, "filterByConvexity");
-  ui_->filterByConvexityCheckBox->setChecked(filter_by_convexity);
-  ui_->frame_filter_convexity->setEnabled(filter_by_convexity);
-  ui_->minConvexityDoubleSpinBox->setValue(getMember<double>(subnode, "minConvexity"));
-  ui_->maxConvexityDoubleSpinBox->setValue(getMember<double>(subnode, "maxConvexity"));
+  ui_->filterByConvexityCheckBox->setChecked(params.filterByConvexity);
+  ui_->frame_filter_convexity->setEnabled(params.filterByConvexity);
+  ui_->minConvexityDoubleSpinBox->setValue(params.minConvexity);
+  ui_->maxConvexityDoubleSpinBox->setValue(params.maxConvexity);
 }
 
 YAML::Node ModifiedCircleGridTargetFinderWidget::save() const
@@ -113,7 +108,7 @@ YAML::Node ModifiedCircleGridTargetFinderWidget::save() const
   subnode["minInertiaRatio"] = ui_->minInertiaRatioDoubleSpinBox->value();
   subnode["maxInertiaRatio"] = ui_->maxInertiaRatioDoubleSpinBox->value();
 
-  subnode["filterByConvexity"] = ui_->filterByCircularityCheckBox->isChecked();
+  subnode["filterByConvexity"] = ui_->filterByConvexityCheckBox->isChecked();
   subnode["minConvexity"] = ui_->minConvexityDoubleSpinBox->value();
   subnode["maxConvexity"] = ui_->maxConvexityDoubleSpinBox->value();
 

@@ -211,8 +211,8 @@ TEST(CameraIntrinsicCalibrationValidation, CalibratesCroppedImageWithPrincipalPo
   const Eigen::Vector2d scale(0.8, 0.7);
 
   CameraIntrinsicProblem problem{};
-  problem.intrinsics_guess =
-      full_image.remapImageCoordinates(scale.x(), scale.y(), -scale.x() * crop_origin.x(), -scale.y() * crop_origin.y());
+  problem.intrinsics_guess = full_image.remapImageCoordinates(scale.x(), scale.y(), -scale.x() * crop_origin.x(),
+                                                              -scale.y() * crop_origin.y());
   problem.use_extrinsic_guesses = true;
 
   for (int view = 0; view < 10; ++view)
