@@ -1,3 +1,4 @@
+#include <calibration_workbench/core/exceptions.h>
 #include <calibration_workbench/core/serialization.h>
 #include <calibration_workbench/target_finders/opencv/target_finder.h>
 #include <calibration_workbench/target_finders/opencv/utils.h>
@@ -16,10 +17,89 @@
 
 #include <opencv2/imgcodecs.hpp>
 
+namespace
+{
+using calibration_workbench::TargetFinderOpenCV;
+
+struct ImageReport
+{
+  std::string_view status;
+  std::size_t feature_count = 0;
+  std::size_t point_count = 0;
+};
+
+ImageReport inspectImage(const TargetFinderOpenCV::ConstPtr& finder, const std::string& image_path)
+{
+  cv::Mat image;
+  try
+  {
+    image = calibration_workbench::readImageOpenCV(image_path);
+  }
+  catch (const std::exception& error)
+  {
+    std::cerr << "Cannot read " << image_path << ": " << error.what() << '\n';
+    return { "unreadable" };
+  }
+
+  try
+  {
+    const auto features = finder->findTargetFeatures(image);
+    if (features.empty())
+      return { "no_detection" };
+
+    std::size_t point_count = 0;
+    for (const auto& feature : features)
+      point_count += feature.second.size();
+
+    return { "detected", features.size(), point_count };
+  }
+  catch (const calibration_workbench::TargetNotFoundException& error)
+  {
+    std::cerr << image_path << ": " << error.what() << '\n';
+    return { "no_detection" };
+  }
+  catch (const std::exception& error)
+  {
+    std::cerr << image_path << ": " << error.what() << '\n';
+    return { "detector_error" };
+  }
+}
+
+int runBatch(const TargetFinderOpenCV::ConstPtr& finder, int argc, char** argv)
+{
+  bool all_detected = true;
+  std::cout.imbue(std::locale::classic());
+  std::cout << "image_path,status,feature_count,point_count\n";
+  for (int i = 3; i < argc; ++i)
+  {
+    const std::string image_path(argv[i]);
+    const auto report = inspectImage(finder, image_path);
+    all_detected &= report.status == "detected";
+
+    std::cout << '"';
+    for (const char character : image_path)
+    {
+      if (character == '"')
+        std::cout << '"';
+      std::cout << character;
+    }
+    std::cout << "\"," << report.status << ',' << report.feature_count << ',' << report.point_count << '\n';
+  }
+
+  if (!std::cout.flush())
+  {
+    std::cerr << "Failed to write target CSV\n";
+    return 1;
+  }
+  return all_detected ? 0 : 1;
+}
+}  // namespace
+
 int main(int argc, char** argv)
 {
   constexpr auto usage = "Usage: calibration_workbench_detect_target <target.yaml> <image> [--overlay <path>] "
-                         "[--correspondences]\n";
+                         "[--correspondences]\n"
+                         "       calibration_workbench_detect_target <target.yaml> --batch <image> [<image> ...]\n";
   if (argc == 2 && std::string_view(argv[1]) == "--help")
   {
     std::cout << usage;
@@ -31,9 +111,16 @@ int main(int argc, char** argv)
     return 2;
   }
 
+  const bool batch = std::string_view(argv[2]) == "--batch";
+  if (batch && argc == 3)
+  {
+    std::cerr << usage;
+    return 2;
+  }
+
   std::string overlay_path;
   bool write_correspondences = false;
-  for (int i = 3; i < argc; ++i)
+  for (int i = 3; !batch && i < argc; ++i)
   {
     const std::string_view option(argv[i]);
     if (option == "--correspondences" && !write_correspondences)
@@ -67,6 +154,9 @@ int main(int argc, char** argv)
     loader.search_libraries_env = CALIBRATION_WORKBENCH_SEARCH_LIBRARIES_ENV;
     const auto factory = loader.createInstance<TargetFinderFactoryOpenCV>(plugin_type);
     const auto finder = factory->create(config);
+    if (batch)
+      return runBatch(finder, argc, argv);
+
     const cv::Mat image = readImageOpenCV(argv[2]);
     const auto features = finder->findTargetFeatures(image);
     if (features.empty())
