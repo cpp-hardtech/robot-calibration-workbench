@@ -279,6 +279,34 @@ TEST_F(ModifiedCircleGridFinderTest, preservesOverlayInput) { this->verifyOverla
 
 TEST_F(CharucoFinderTest, preservesOverlayInput) { this->verifyOverlayPreservesInput(); }
 
+TEST(CharucoOverlayTest, drawsCornersWhenOnlyOneRowIsVisible)
+{
+  constexpr int rows = 6;
+  constexpr int cols = 9;
+  constexpr int tile = 80;
+  constexpr int margin = 40;
+  const CharucoGridTarget target(rows, cols, 0.02f, 0.014f, cv::aruco::DICT_6X6_250);
+  const CharucoGridBoardTargetFinder finder(target);
+
+  cv::Mat board_image;
+  target.board->draw({ cols * tile + 2 * margin, rows * tile + 2 * margin }, board_image, margin);
+  cv::Mat partial_image(board_image.size(), board_image.type(), cv::Scalar(255));
+  const cv::Range visible_rows(margin + 2 * tile, margin + 4 * tile);
+  board_image.rowRange(visible_rows).copyTo(partial_image.rowRange(visible_rows));
+  cv::Mat image;
+  cv::cvtColor(partial_image, image, cv::COLOR_GRAY2BGR);
+
+  const auto features = finder.findTargetFeatures(image);
+  ASSERT_EQ(features.size(), static_cast<std::size_t>(cols - 1));
+  const auto target_y = target.points.at(features.begin()->first).y();
+  for (const auto& feature : features)
+    EXPECT_EQ(target.points.at(feature.first).y(), target_y);
+
+  cv::Mat overlay;
+  ASSERT_NO_THROW(overlay = finder.drawTargetFeatures(image, features));
+  EXPECT_GT(cv::norm(overlay, image, cv::NORM_INF), 0.0);
+}
+
 TEST_F(ArucoFinderTest, preservesOverlayInput) { this->verifyOverlayPreservesInput(); }
 
 TEST_F(ModifiedCircleGridFinderTest, findTargetFeatures) { this->runTest(); }

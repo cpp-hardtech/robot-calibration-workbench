@@ -1,4 +1,5 @@
 #include <calibration_workbench/target_finders/opencv/target_finder.h>
+#include <calibration_workbench/core/exceptions.h>
 #include <calibration_workbench/core/utils.h>
 
 #include <opencv2/opencv.hpp>
@@ -15,8 +16,16 @@ void TargetFinderOpenCV::drawTargetOrigin(const cv::Mat& image, const TargetFeat
   if (correspondences.size() < 4)
     return;
 
-  // Compute the homography matrix
-  auto H = calculateHomography(correspondences);
+  Eigen::Matrix<double, 3, 3, Eigen::RowMajor> homography;
+  try
+  {
+    homography = calculateHomography(correspondences);
+  }
+  catch (const ICalException&)
+  {
+    // A partial detection can have enough points for an overlay without defining a plane homography.
+    return;
+  }
 
   // Create the set of target 2D points to project into the image: one at the origin, one along the +X direction, and
   // one in the +Y direction
@@ -26,7 +35,7 @@ void TargetFinderOpenCV::drawTargetOrigin(const cv::Mat& image, const TargetFeat
   pts.col(2) = Eigen::Vector2d::UnitY() * axis_length;
 
   // Project the points into UV coordinates
-  Eigen::Matrix2Xd uv = projectHomography(H, pts);
+  Eigen::Matrix2Xd uv = projectHomography(homography, pts);
 
   // Draw a line from the origin to the +X point (in red)
   cv::line(image, cv::Point2f(uv(0, 0), uv(1, 0)), cv::Point2f(uv(0, 1), uv(1, 1)), cv::Vec3d(0, 0, 255), 3);
