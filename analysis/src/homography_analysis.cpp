@@ -4,6 +4,7 @@
 #include <calibration_workbench/core/utils.h>
 
 #include <Eigen/Dense>
+#include <numeric>
 
 namespace calibration_workbench
 {
@@ -64,14 +65,20 @@ RandomCorrespondenceSampler::RandomCorrespondenceSampler(const std::size_t n_cor
 
 std::vector<std::size_t> RandomCorrespondenceSampler::getSampleCorrespondenceIndices() const
 {
-  // Create a random number generator with a uniform distribution across all indices
   std::mt19937 rand_gen(seed);
-  std::uniform_int_distribution<std::size_t> dist(0, n_correspondences - 1);
-  auto fn = [&rand_gen, &dist]() -> std::size_t { return dist(rand_gen); };
+  std::vector<std::size_t> remaining(n_correspondences);
+  std::iota(remaining.begin(), remaining.end(), std::size_t{ 0 });
 
-  // Generate a vector of 4 random correspondence indices
-  std::vector<std::size_t> output(n_samples);
-  std::generate(output.begin(), output.end(), fn);
+  std::vector<std::size_t> output;
+  output.reserve(n_samples);
+  for (std::size_t i = 0; i < n_samples; ++i)
+  {
+    std::uniform_int_distribution<std::size_t> dist(0, remaining.size() - 1);
+    const auto index = dist(rand_gen);
+    output.push_back(remaining[index]);
+    remaining[index] = remaining.back();
+    remaining.pop_back();
+  }
 
   return output;
 }
