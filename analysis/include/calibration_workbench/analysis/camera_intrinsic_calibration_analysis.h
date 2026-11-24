@@ -23,7 +23,8 @@ struct VirtualCorrespondenceResult
 /**
  * @brief Divides a set of correspondences into two halves and measures the difference in position of one half to the
  * other Method:
- *     1. Split the correspondence set into two virtual correspondence sets
+ *     1. Split the correspondence set into two virtual correspondence sets. Interleave the points if a consecutive
+ *        half lacks noncollinear target points.
  *     2. Solve PnP optimization for each virtual correspondence set to get the transform from the camera to the virtual
  * correspondence set
  *     3. Return the error between the two virtual correspondence sets
@@ -36,8 +37,8 @@ struct VirtualCorrespondenceResult
  * @param intr - camera intrinsic parameters
  * @param camera_to_target_guess - an initial guess about the location of the target relative to the camera (default:
  * identity)
- * @param pnp_sq_error_threshold - Max squared error allowed for a PnP optimization.
- * This value should be driven by the accuracy of the sensor providing the observations (default: 1.0 pixel^2)
+ * @param pnp_sq_error_threshold - Maximum mean squared reprojection error per feature in either PnP fit
+ * (default: 1.0 pixel^2).
  * @return
  * @ingroup analysis_camera_intrinsic
  */
@@ -78,8 +79,8 @@ std::ostream& operator<<(std::ostream& stream, const IntrinsicCalibrationAccurac
  * @param target_mount_to_target - The transformation from the target mount frame to the target
  * @param camera_base_to_target_base - the transform from the camera base frame to the target base frame (typically
  * identity)
- * @param pnp_sq_error_threshold - Max squared error allowed for a PnP optimization.
- * This value should be driven by the accuracy of the sensor providing the observations (default: 1.0 pixel^2)
+ * @param pnp_sq_error_threshold - Maximum mean squared reprojection error per feature in either PnP fit
+ * (default: 1.0 pixel^2).
  * @return
  * @ingroup analysis_camera_intrinsic
  */

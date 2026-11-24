@@ -2,9 +2,27 @@
 #include <calibration_workbench/analysis/statistics.h>
 #include <calibration_workbench/optimizations/pnp.h>
 #include <calibration_workbench/core/exceptions.h>
+#include <calibration_workbench/core/utils.h>
+
+#include <Eigen/LU>
 
 namespace calibration_workbench
 {
+namespace
+{
+bool hasNoncollinearTargetPoints(const Correspondence2D3D::Set& correspondences)
+{
+  if (correspondences.size() < 3)
+    return false;
+
+  const Eigen::Vector3d& origin = correspondences.front().in_target;
+  Eigen::Matrix3Xd offsets(3, static_cast<Eigen::Index>(correspondences.size() - 1));
+  for (Eigen::Index col = 0; col < offsets.cols(); ++col)
+    offsets.col(col) = correspondences[static_cast<std::size_t>(col) + 1].in_target - origin;
+  return offsets.fullPivLu().rank() >= 2;
+}
+}  // namespace
+
 VirtualCorrespondenceResult measureVirtualTargetDiff(const Correspondence2D3D::Set& correspondences,
                                                      const CameraIntrinsics& intr,
                                                      const Eigen::Isometry3d& camera_to_target_guess,
@@ -19,12 +37,22 @@ VirtualCorrespondenceResult measureVirtualTargetDiff(const Correspondence2D3D::S
     problem.correspondences = corr;
     problem.camera_to_target_guess = camera_to_target_guess;
 
-    PnPResult result = optimize(problem);
-    if (!result.converged || result.final_cost_per_obs > pnp_sq_error_threshold)
+    const PnPResult result = optimize(problem);
+    if (!result.converged)
+      throw ICalException("PnP optimization did not converge");
+
+    double sum_squared_error = 0.0;
+    for (const auto& correspondence : corr)
+    {
+      const Eigen::Vector3d point_in_camera = result.camera_to_target * correspondence.in_target;
+      sum_squared_error += (projectPoint(intr, point_in_camera) - correspondence.in_image).squaredNorm();
+    }
+    const double mean_squared_error = sum_squared_error / static_cast<double>(corr.size());
+    if (!(mean_squared_error <= pnp_sq_error_threshold))
     {
       std::stringstream ss;
-      ss << "PnP optimization " << (result.converged ? "converged" : "did not converge") << " with residual error of "
-         << result.final_cost_per_obs << " (" << pnp_sq_error_threshold << " max)";
+      ss << "PnP mean squared reprojection error is " << mean_squared_error << " px^2 (" << pnp_sq_error_threshold
+         << " px^2 max)";
       throw ICalException(ss.str());
     }
 
@@ -37,6 +65,16 @@ VirtualCorrespondenceResult measureVirtualTargetDiff(const Correspondence2D3D::S
   // Create two half sets of correspondences
   Correspondence2D3D::Set set_1(correspondences.begin(), correspondences.begin() + half_size);
   Correspondence2D3D::Set set_2(correspondences.begin() + half_size, correspondences.end());
+
+  // Consecutive halves of row-major detections can each contain a single row.
+  // Interleave those observations to give both fits points across the board.
+  if (!hasNoncollinearTargetPoints(set_1) || !hasNoncollinearTargetPoints(set_2))
+  {
+    set_1.clear();
+    set_2.clear();
+    for (std::size_t i = 0; i < correspondences.size(); ++i)
+      (i % 2 == 0 ? set_1 : set_2).push_back(correspondences[i]);
+  }
 
   /* Get the camera to target transformation for each half set
    * Note: these transforms are from the camera to the origin of each virtual target.

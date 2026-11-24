@@ -3,10 +3,14 @@
 #include <calibration_workbench/analysis/camera_intrinsic_calibration_analysis.h>
 #include <calibration_workbench/analysis/extrinsic_hand_eye_calibration_analysis.h>
 #include <calibration_workbench/optimizations/extrinsic_hand_eye.h>
+#include <calibration_workbench/optimizations/pnp.h>
 #include <calibration_workbench/core/serialization.h>
 #include <calibration_workbench/core/utils.h>
 #include <calibration_workbench_tests/utilities.h>
 #include <calibration_workbench_tests/observation_creator.h>
+#include <array>
+#include <cmath>
+#include <iostream>
 #include <limits>
 #include <memory>
 
@@ -92,6 +96,75 @@ TEST(CameraIntrinsicCalibrationValidation, MeasureVirtualTargetDiff)
     // Expect the transform to not be very close to its expected value
     EXPECT_FALSE(result.t1_to_t2.isApprox(expected, 1.0e-8));
   }
+}
+
+TEST(CameraIntrinsicCalibrationValidation, MeasuresVirtualTargetsOnTwoRowCheckerboard)
+{
+  const CameraIntrinsics intrinsics{ { 600.0, 610.0, 320.0, 240.0 } };
+  Eigen::Isometry3d camera_to_target = Eigen::Isometry3d::Identity();
+  camera_to_target.translation().z() = 1.0;
+
+  Correspondence2D3D::Set correspondences;
+  for (int row = 0; row < 2; ++row)
+    for (int col = 0; col < 4; ++col)
+    {
+      const Eigen::Vector3d target(0.025 * col, 0.025 * row, 0.0);
+      const Eigen::Vector3d camera_point = camera_to_target * target;
+      correspondences.emplace_back(projectPoint(intrinsics, camera_point), target);
+    }
+
+  std::cout << "Virtual target fixture: 2 rows, 4 columns, row-major, depth 1 m\n";
+  VirtualCorrespondenceResult result;
+  ASSERT_NO_THROW(result = measureVirtualTargetDiff(correspondences, intrinsics, camera_to_target));
+  EXPECT_NEAR(result.positional_error, 0.0, 1e-10);
+  EXPECT_NEAR(result.angular_error, 0.0, 1e-10);
+}
+
+TEST(CameraIntrinsicCalibrationValidation, UsesMeanSquaredPixelErrorForVirtualTargetLimit)
+{
+  const CameraIntrinsics intrinsics{ { 600.0, 610.0, 320.0, 240.0 } };
+  Eigen::Isometry3d camera_to_target = Eigen::Isometry3d::Identity();
+  camera_to_target.translation().z() = 1.0;
+
+  // The pattern is orthogonal to constant, linear, and quadratic functions of
+  // the column position. The reprojection error cannot be removed locally by
+  // translating, rotating, or tilting the target.
+  const std::array<double, 4> column_pattern{ 1.0, -3.0, 3.0, -1.0 };
+  const double amplitude = 1.5 / std::sqrt(5.0);
+  Correspondence2D3D::Set correspondences;
+  for (int row = 0; row < 4; ++row)
+    for (std::size_t col = 0; col < column_pattern.size(); ++col)
+    {
+      const Eigen::Vector3d target(0.025 * col, 0.025 * row, 0.0);
+      const Eigen::Vector3d camera_point = camera_to_target * target;
+      Eigen::Vector2d image = projectPoint(intrinsics, camera_point);
+      image.x() += amplitude * column_pattern[col];
+      correspondences.emplace_back(image, target);
+    }
+
+  for (std::size_t half = 0; half < 2; ++half)
+  {
+    PnPProblem problem;
+    problem.intr = intrinsics;
+    problem.camera_to_target_guess = camera_to_target;
+    const auto begin = correspondences.begin() + half * 8;
+    problem.correspondences.assign(begin, begin + 8);
+    const auto solution = optimize(problem);
+    ASSERT_TRUE(solution.converged);
+    double sum_squared_error = 0.0;
+    for (const auto& corr : problem.correspondences)
+    {
+      const Eigen::Vector3d camera_point = solution.camera_to_target * corr.in_target;
+      sum_squared_error += (projectPoint(intrinsics, camera_point) - corr.in_image).squaredNorm();
+    }
+    const double mean_squared_error = sum_squared_error / problem.correspondences.size();
+    std::cout << "Virtual target half " << half << ": " << problem.correspondences.size() << " features, solver cost "
+              << solution.final_cost_per_obs << ", mean squared error " << mean_squared_error << " px^2\n";
+    ASSERT_NEAR(mean_squared_error, 2.25, 1e-8);
+  }
+
+  EXPECT_THROW(measureVirtualTargetDiff(correspondences, intrinsics, camera_to_target, 1.0), ICalException);
+  EXPECT_NO_THROW(measureVirtualTargetDiff(correspondences, intrinsics, camera_to_target, 3.0));
 }
 
 TEST(CameraIntrinsicCalibrationValidation, MeasureIntrinsicCalibrationAccuracy)
