@@ -7,6 +7,7 @@
 #include <calibration_workbench/core/utils.h>
 #include <calibration_workbench_tests/utilities.h>
 #include <calibration_workbench_tests/observation_creator.h>
+#include <limits>
 #include <memory>
 
 using namespace calibration_workbench;
@@ -256,6 +257,23 @@ TEST(CameraIntrinsicCalibrationValidation, RoundTripsIntrinsicProblemAndLoadsLeg
   document["intrisics_guess"] = YAML::Clone(document["intrinsics_guess"]);
   document.remove("intrinsics_guess");
   EXPECT_EQ(document.as<CameraIntrinsicProblem>().intrinsics_guess, problem.intrinsics_guess);
+}
+
+TEST(CameraIntrinsicCalibrationValidation, RoundTripsUnavailableInitialCost)
+{
+  CameraIntrinsicResult result{};
+  result.initial_cost_per_obs = std::numeric_limits<double>::infinity();
+  result.final_cost_per_obs = 0.25;
+  result.intrinsics = CameraIntrinsics{ { 640.0, 567.0, 320.0, 240.0 } };
+  YAML::Node document = YAML::Load(YAML::Dump(YAML::Node(result)));
+
+  EXPECT_EQ(document["initial_cost_per_obs"].Scalar(), ".inf");
+  EXPECT_EQ(document.as<CameraIntrinsicResult>().initial_cost_per_obs, result.initial_cost_per_obs);
+
+  document["initial_cost_per_obs"] = "inf";
+  const auto legacy = document.as<CameraIntrinsicResult>();
+  EXPECT_EQ(legacy.initial_cost_per_obs, result.initial_cost_per_obs);
+  EXPECT_DOUBLE_EQ(legacy.final_cost_per_obs, result.final_cost_per_obs);
 }
 
 static Observation2D3D makeAnalysisObservation(const CameraIntrinsics& intrinsics)
