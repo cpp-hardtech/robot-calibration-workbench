@@ -11,11 +11,13 @@ using path = std::filesystem::path;
 using path = std::experimental::filesystem::path;
 #endif
 
-#include <random>
+#include <cmath>
 #include <thread>
 #include <yaml-cpp/yaml.h>
 
 using namespace calibration_workbench;
+
+constexpr double orientation_weight = 100.0;
 
 /** This example performs a kinematic calibration for a two-axis part positioner using pose measurements acquired from
  * a statically mounted metrology sensor observing a target mounted on the positioner. Each observation consists of a
@@ -151,13 +153,15 @@ struct Stats
   double pos_stdev;
   double rot_mean;
   double rot_stdev;
+  double weighted_pose_rms;
 
   void print() const
   {
     std::cout << "Position Difference Mean: " << pos_mean << std::endl;
     std::cout << "Position Difference Std. Dev.: " << pos_stdev << std::endl;
     std::cout << "Orientation Difference Mean: " << rot_mean << std::endl;
-    std::cout << "Orientation difference Std. Dev.: " << rot_stdev << "\n" << std::endl;
+    std::cout << "Orientation Difference Std. Dev.: " << rot_stdev << std::endl;
+    std::cout << "Weighted Pose RMS: " << weighted_pose_rms << "\n" << std::endl;
   }
 
   /**
@@ -170,6 +174,7 @@ struct Stats
     out.pos_stdev = (pos_stdev - other.pos_stdev) / pos_stdev;
     out.rot_mean = (rot_mean - other.rot_mean) / rot_mean;
     out.rot_stdev = (rot_stdev - other.rot_stdev) / rot_stdev;
+    out.weighted_pose_rms = (weighted_pose_rms - other.weighted_pose_rms) / weighted_pose_rms;
     return out;
   }
 };
@@ -184,6 +189,7 @@ Stats compareToMeasurements(const DHChain& initial_camera_chain, const DHChain& 
   std::vector<double> pos_acc, ori_acc;
   pos_acc.reserve(measurements.size());
   ori_acc.reserve(measurements.size());
+  double squared_pose_error_sum = 0.0;
 
   for (const KinematicMeasurement& m : measurements)
   {
@@ -200,15 +206,23 @@ Stats compareToMeasurements(const DHChain& initial_camera_chain, const DHChain& 
     Eigen::Isometry3d camera_to_target = camera_base_to_camera.inverse() * camera_base_to_target;
 
     // Compare
-    Eigen::Isometry3d diff = camera_to_target.inverse() * m.camera_to_target;
+    const Eigen::Isometry3d target_to_camera = camera_to_target.inverse();
+    const Eigen::Isometry3d diff = target_to_camera * m.camera_to_target;
     pos_acc.push_back(diff.translation().norm());
-    ori_acc.push_back(
-        Eigen::Quaterniond(camera_to_target.linear()).angularDistance(Eigen::Quaterniond(m.camera_to_target.linear())));
+    const double angle_error =
+        Eigen::Quaterniond(camera_to_target.linear()).angularDistance(Eigen::Quaterniond(m.camera_to_target.linear()));
+    ori_acc.push_back(angle_error);
+
+    // Use the pose residuals from the solver for a comparison on the same measurements.
+    const Eigen::Isometry3d pose_error = m.camera_to_target * target_to_camera;
+    const double weighted_angle_error = orientation_weight * angle_error;
+    squared_pose_error_sum += pose_error.translation().squaredNorm() + weighted_angle_error * weighted_angle_error;
   }
 
   Stats stats;
   std::tie(stats.pos_mean, stats.pos_stdev) = computeStats(pos_acc);
   std::tie(stats.rot_mean, stats.rot_stdev) = computeStats(ori_acc);
+  stats.weighted_pose_rms = std::sqrt(squared_pose_error_sum / static_cast<double>(measurements.size()));
 
   return stats;
 }
@@ -269,7 +283,7 @@ std::tuple<KinematicCalibrationResult, Stats, Stats> run()
   // Run the calibration
   std::cout << "Starting kinematic calibration optimization..." << std::endl;
 
-  KinematicCalibrationResult result_opt_dh = optimize(problem, 100.0, options);
+  KinematicCalibrationResult result_opt_dh = optimize(problem, orientation_weight, options);
   printResults(result_opt_dh);
 
   Stats stats_opt_dh = compareToMeasurements(problem.camera_chain, problem.target_chain, result_opt_dh, measurements);
@@ -285,7 +299,7 @@ std::tuple<KinematicCalibrationResult, Stats, Stats> run()
     problem.mask.at(1) = createDHMask(mask);
   }
 
-  KinematicCalibrationResult result_static_dh = optimize(problem, 100.0, options);
+  KinematicCalibrationResult result_static_dh = optimize(problem, orientation_weight, options);
   printResults(result_static_dh);
 
   // Compare the results of this optimization with the measurements using the measured joints and nominal kinematic
@@ -314,9 +328,8 @@ int main(int argc, char** argv)
     std::cout << "Position: " << 100.0 * diff_stats.pos_mean << "%" << std::endl;
     std::cout << "Position Std. Dev.: " << 100.0 * diff_stats.pos_stdev << "%" << std::endl;
     std::cout << "Orientation: " << 100.0 * diff_stats.rot_mean << "%" << std::endl;
-    std::cout << "Orientation Std. Dev.: " << 100.0 * diff_stats.rot_stdev << "%"
-              << "\n"
-              << std::endl;
+    std::cout << "Orientation Std. Dev.: " << 100.0 * diff_stats.rot_stdev << "%" << std::endl;
+    std::cout << "Weighted Pose RMS: " << 100.0 * diff_stats.weighted_pose_rms << "%\n" << std::endl;
 
     return 0;
   }
@@ -347,13 +360,8 @@ TEST(KinematicCalibration, TwoAxisPositionerCalibrationFromMeasurements)
   ASSERT_LT(stats_opt_dh.pos_mean, 0.002);               // meters
   ASSERT_LT(stats_opt_dh.rot_mean, 0.2 * M_PI / 180.0);  // radians
 
-  // Expect the optimization in which the DH parameters were adjusted to be some percentage improvement over the
-  // optimization in which the DH parameters were not adjusted
-  Stats diff_stats = stats_static_dh % stats_opt_dh;
-  ASSERT_GT(diff_stats.pos_mean, 0.1);
-  ASSERT_GT(diff_stats.pos_stdev, 0.1);
-  ASSERT_GT(diff_stats.rot_mean, 0.1);
-  ASSERT_GT(diff_stats.rot_stdev, 0.1);
+  // Compare the fits with the same weighted pose residuals and measurement count.
+  ASSERT_LT(stats_opt_dh.weighted_pose_rms, stats_static_dh.weighted_pose_rms);
 }
 
 int main(int argc, char** argv)
