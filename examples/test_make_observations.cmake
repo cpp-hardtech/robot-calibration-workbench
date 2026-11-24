@@ -122,3 +122,59 @@ expect_failure(
   "${images}"
   --poses
   "${unmatched_poses}")
+
+set(dataset "${CMAKE_CURRENT_LIST_DIR}/data/test_set_10x10")
+set(session_images "${TEST_DIRECTORY}/session-images")
+set(session_poses "${TEST_DIRECTORY}/session-poses")
+foreach(session IN ITEMS first second)
+  file(MAKE_DIRECTORY "${session_images}/${session}" "${session_poses}/${session}")
+endforeach()
+configure_file("${dataset}/images/0.png" "${session_images}/first/frame.png" COPYONLY)
+configure_file("${dataset}/images/1.png" "${session_images}/second/frame.png" COPYONLY)
+configure_file("${dataset}/poses/0.yaml" "${session_poses}/first/frame.yaml" COPYONLY)
+configure_file("${dataset}/poses/1.yaml" "${session_poses}/second/frame.yml" COPYONLY)
+
+execute_process(
+  COMMAND "${MAKE_OBSERVATIONS}" ../session-images --relative-to . --recursive --poses ../session-poses
+  WORKING_DIRECTORY "${manifests}"
+  RESULT_VARIABLE status
+  OUTPUT_VARIABLE manifest
+  ERROR_VARIABLE diagnostic)
+string(CONCAT expected
+              "data:\n  - image: ../session-images/first/frame.png\n    pose: ../session-poses/first/frame.yaml\n"
+              "  - image: ../session-images/second/frame.png\n    pose: ../session-poses/second/frame.yml\n")
+if(NOT
+   status
+   EQUAL
+   0
+   OR NOT
+      manifest
+      STREQUAL
+      expected)
+  message(FATAL_ERROR "Unexpected recursive observation manifest (${status}): ${diagnostic}\n${manifest}")
+endif()
+
+expect_failure(1 "No image files" "${session_images}")
+expect_failure(
+  2
+  "Usage:"
+  "${session_images}"
+  --recursive
+  --recursive)
+
+configure_file("${dataset}/poses/0.yaml" "${session_poses}/first/frame.yml" COPYONLY)
+expect_failure(
+  1
+  "Duplicate pose stem 'first/frame'"
+  "${session_images}"
+  --recursive
+  --poses
+  "${session_poses}")
+file(REMOVE "${session_poses}/first/frame.yml" "${session_poses}/second/frame.yml")
+expect_failure(
+  1
+  "Missing pose for image .*/second/frame.png"
+  "${session_images}"
+  --poses
+  "${session_poses}"
+  --recursive)

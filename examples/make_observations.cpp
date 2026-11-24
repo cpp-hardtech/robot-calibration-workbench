@@ -23,27 +23,40 @@ fs::path resolveDirectory(const fs::path& directory, const std::string& kind)
   return fs::canonical(directory);
 }
 
-FileIndex scanFiles(const fs::path& directory, const std::string& kind,
+FileIndex scanFiles(const fs::path& directory, const std::string& kind, bool recursive,
                     std::initializer_list<std::string_view> suffixes)
 {
+  const fs::path root = resolveDirectory(directory, kind);
   FileIndex files;
-  for (const auto& entry : fs::directory_iterator(resolveDirectory(directory, kind)))
-  {
+  const auto add_file = [&](const fs::directory_entry& entry) {
     if (!entry.is_regular_file())
-      continue;
+      return;
 
     const fs::path& path = entry.path();
     std::string suffix = path.extension().string();
     std::transform(suffix.begin(), suffix.end(), suffix.begin(),
                    [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
     if (std::find(suffixes.begin(), suffixes.end(), suffix) == suffixes.end())
-      continue;
+      return;
 
-    const std::string stem = path.stem().string();
+    fs::path relative = path.lexically_relative(root);
+    relative.replace_extension();
+    const std::string stem = relative.generic_string();
     const auto [existing, inserted] = files.emplace(stem, path);
     if (!inserted)
       throw std::runtime_error("Duplicate " + kind + " stem '" + stem + "': " + existing->second.string() + " and " +
                                path.string());
+  };
+
+  if (recursive)
+  {
+    for (const auto& entry : fs::recursive_directory_iterator(root))
+      add_file(entry);
+  }
+  else
+  {
+    for (const auto& entry : fs::directory_iterator(root))
+      add_file(entry);
   }
   if (files.empty())
     throw std::runtime_error("No " + kind + " files found in " + directory.string());
@@ -65,7 +78,7 @@ std::string manifestPath(const fs::path& path, const std::optional<fs::path>& re
 int main(int argc, char** argv)
 {
   constexpr auto usage = "Usage: calibration_workbench_make_observations <image-dir> [--poses <pose-dir>] "
-                         "[--relative-to <manifest-directory>]\n";
+                         "[--relative-to <manifest-directory>] [--recursive]\n";
   if (argc == 2 && std::string_view(argv[1]) == "--help")
   {
     std::cout << usage;
@@ -78,20 +91,26 @@ int main(int argc, char** argv)
   }
 
   std::optional<fs::path> pose_directory, relative_to;
-  for (int i = 2; i < argc; i += 2)
+  bool recursive = false;
+  for (int i = 2; i < argc; ++i)
   {
     const std::string_view option(argv[i]);
+    if (option == "--recursive" && !recursive)
+    {
+      recursive = true;
+      continue;
+    }
     const std::string_view value(i + 1 < argc ? argv[i + 1] : "");
     if (!value.empty() && value.substr(0, 2) != "--")
     {
       if (option == "--poses" && !pose_directory)
       {
-        pose_directory = argv[i + 1];
+        pose_directory = argv[++i];
         continue;
       }
       if (option == "--relative-to" && !relative_to)
       {
-        relative_to = argv[i + 1];
+        relative_to = argv[++i];
         continue;
       }
     }
@@ -102,9 +121,10 @@ int main(int argc, char** argv)
   try
   {
     const auto images =
-        scanFiles(argv[1], "image",
+        scanFiles(argv[1], "image", recursive,
                   { ".bmp", ".jpeg", ".jpg", ".pbm", ".pgm", ".png", ".pnm", ".ppm", ".tif", ".tiff", ".webp" });
-    const auto poses = pose_directory ? scanFiles(*pose_directory, "pose", { ".yaml", ".yml" }) : FileIndex{};
+    const auto poses =
+        pose_directory ? scanFiles(*pose_directory, "pose", recursive, { ".yaml", ".yml" }) : FileIndex{};
     if (relative_to)
       relative_to = resolveDirectory(*relative_to, "manifest");
 

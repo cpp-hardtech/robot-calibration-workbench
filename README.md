@@ -229,6 +229,11 @@ entries are sorted lexicographically by filename stem, and pose matching uses th
 case-sensitive stem. The generator uses file names and leaves image and pose validation
 to the calibration application.
 
+Add `--recursive` to include subdirectories and sort observations by their relative paths
+without extensions. Pose paths must mirror the image directory structure. For example,
+`images/session-a/frame.png` is paired with `poses/session-a/frame.yaml`. The same frame
+name can appear in several sessions.
+
 Exit status is `0` for a manifest, `1` for a directory, pairing, or output error, and `2`
 for invalid usage. Empty scans, duplicate stems, and missing pose matches produce a
 diagnostic on standard error before the command writes a manifest.
