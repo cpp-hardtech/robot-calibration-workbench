@@ -11,6 +11,7 @@
 #include <ceres/ceres.h>
 
 #include <algorithm>
+#include <limits>
 
 namespace calibration_workbench
 {
@@ -316,7 +317,11 @@ Node convert<CameraIntrinsicResult>::encode(const CameraIntrinsicResult& rhs)
   Node node;
 
   node["converged"] = rhs.converged;
-  node["initial_cost_per_obs"] = rhs.initial_cost_per_obs;
+  // Older yaml-cpp releases emit a double infinity as "inf", which they cannot read.
+  if (rhs.initial_cost_per_obs == std::numeric_limits<double>::infinity())
+    node["initial_cost_per_obs"] = ".inf";
+  else
+    node["initial_cost_per_obs"] = rhs.initial_cost_per_obs;
   node["final_cost_per_obs"] = rhs.final_cost_per_obs;
   node["intrinsics"] = rhs.intrinsics;
   node["distortions"] = rhs.distortions;
@@ -328,7 +333,11 @@ Node convert<CameraIntrinsicResult>::encode(const CameraIntrinsicResult& rhs)
 bool convert<CameraIntrinsicResult>::decode(const YAML::Node& node, CameraIntrinsicResult& rhs)
 {
   rhs.converged = getMember<decltype(rhs.converged)>(node, "converged");
-  rhs.initial_cost_per_obs = getMember<decltype(rhs.initial_cost_per_obs)>(node, "initial_cost_per_obs");
+  const Node initial_cost = node["initial_cost_per_obs"];
+  if (initial_cost.IsDefined() && initial_cost.IsScalar() && initial_cost.Scalar() == "inf")
+    rhs.initial_cost_per_obs = std::numeric_limits<double>::infinity();
+  else
+    rhs.initial_cost_per_obs = getMember<decltype(rhs.initial_cost_per_obs)>(node, "initial_cost_per_obs");
   rhs.final_cost_per_obs = getMember<decltype(rhs.final_cost_per_obs)>(node, "final_cost_per_obs");
   rhs.intrinsics = getMember<decltype(rhs.intrinsics)>(node, "intrinsics");
   rhs.distortions = getMember<decltype(rhs.distortions)>(node, "distortions");

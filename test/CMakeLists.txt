@@ -252,6 +252,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET ${PROJECT_NAME}_camera_intrinsi
 
   add_headless_calibration_test(HeadlessCalibration.ObservationWorkflow headless_calibration_workflow)
   add_headless_calibration_test(HeadlessCalibration.ROSCameraInfo ros_intrinsics_app_config)
+  # This test runs two intrinsic calibrations and one hand-eye calibration.
+  set_tests_properties(HeadlessCalibration.ROSCameraInfo PROPERTIES TIMEOUT 120)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND TARGET ${PROJECT_NAME}_camera_intrinsic_calibration_app)
