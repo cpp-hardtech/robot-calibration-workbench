@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <limits>
 #include <random>
+#include <set>
 #include <calibration_workbench/analysis/homography_analysis.h>
 #include <calibration_workbench/analysis/projection.h>
 #include <calibration_workbench/core/utils.h>
@@ -105,6 +106,35 @@ TEST(Homography, RejectsCollinearCorrespondences)
     correspondences.emplace_back(Eigen::Vector2d(index, 1), Eigen::Vector3d(index, 0, 0));
 
   EXPECT_THROW(calculateHomography(correspondences), ICalException);
+}
+
+TEST(Homography, FitsPerfectCheckerboardWithDistinctRandomSamples)
+{
+  Correspondence2D3D::Set correspondences;
+  for (int row = 0; row < 3; ++row)
+    for (int col = 0; col < 4; ++col)
+      correspondences.emplace_back(Eigen::Vector2d(320.0 + 20.0 * col, 240.0 + 20.0 * row),
+                                   Eigen::Vector3d(SPACING * col, SPACING * row, 0.0));
+
+  const RandomCorrespondenceSampler sampler(correspondences.size(), correspondences.size() / 3, 1);
+  const auto indices = sampler.getSampleCorrespondenceIndices();
+  SCOPED_TRACE(::testing::PrintToString(indices));
+  ASSERT_EQ(indices.size(), 4U);
+  EXPECT_EQ(std::set<std::size_t>(indices.begin(), indices.end()).size(), indices.size());
+  EXPECT_EQ(sampler.getSampleCorrespondenceIndices(), indices);
+
+  Eigen::VectorXd errors;
+  ASSERT_NO_THROW(errors = calculateHomographyError(correspondences, sampler));
+  ASSERT_EQ(errors.size(), static_cast<Eigen::Index>(correspondences.size()));
+  EXPECT_LT(errors.maxCoeff(), 1.0e-10);
+}
+
+TEST(Homography, SamplesEntirePopulationWithoutRepeats)
+{
+  const RandomCorrespondenceSampler sampler(4, 4, 1);
+  const auto indices = sampler.getSampleCorrespondenceIndices();
+  EXPECT_EQ(indices.size(), 4U);
+  EXPECT_EQ(std::set<std::size_t>(indices.begin(), indices.end()), (std::set<std::size_t>{ 0, 1, 2, 3 }));
 }
 
 TEST(CameraBackprojection, RejectsMirroredPlaneBehindCamera)

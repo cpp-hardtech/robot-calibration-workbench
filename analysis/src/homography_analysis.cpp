@@ -64,14 +64,22 @@ RandomCorrespondenceSampler::RandomCorrespondenceSampler(const std::size_t n_cor
 
 std::vector<std::size_t> RandomCorrespondenceSampler::getSampleCorrespondenceIndices() const
 {
-  // Create a random number generator with a uniform distribution across all indices
   std::mt19937 rand_gen(seed);
   std::uniform_int_distribution<std::size_t> dist(0, n_correspondences - 1);
-  auto fn = [&rand_gen, &dist]() -> std::size_t { return dist(rand_gen); };
+  std::vector<bool> selected(n_correspondences, false);
 
-  // Generate a vector of 4 random correspondence indices
-  std::vector<std::size_t> output(n_samples);
-  std::generate(output.begin(), output.end(), fn);
+  // Keep the seeded draw sequence and skip indices already in the sample.
+  std::vector<std::size_t> output;
+  output.reserve(n_samples);
+  while (output.size() < n_samples)
+  {
+    const auto index = dist(rand_gen);
+    if (!selected[index])
+    {
+      selected[index] = true;
+      output.push_back(index);
+    }
+  }
 
   return output;
 }
