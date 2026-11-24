@@ -157,9 +157,8 @@ TEST(CameraIntrinsicCalibrationValidation, UsesMeanSquaredPixelErrorForVirtualTa
       sum_squared_error += (projectPoint(intrinsics, camera_point) - corr.in_image).squaredNorm();
     }
     const double mean_squared_error = sum_squared_error / problem.correspondences.size();
-    std::cout << "Virtual target half " << half << ": " << problem.correspondences.size()
-              << " features, solver cost " << solution.final_cost_per_obs << ", mean squared error "
-              << mean_squared_error << " px^2\n";
+    std::cout << "Virtual target half " << half << ": " << problem.correspondences.size() << " features, solver cost "
+              << solution.final_cost_per_obs << ", mean squared error " << mean_squared_error << " px^2\n";
     ASSERT_NEAR(mean_squared_error, 2.25, 1e-8);
   }
 
