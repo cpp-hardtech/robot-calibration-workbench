@@ -108,6 +108,38 @@ TEST(Homography, RejectsCollinearCorrespondences)
   EXPECT_THROW(calculateHomography(correspondences), ICalException);
 }
 
+TEST(Homography, FitsAllEquationsForNoisyCheckerboard)
+{
+  Correspondence2D3D::Set correspondences;
+  for (int row = 0; row < 3; ++row)
+    for (int col = 0; col < 4; ++col)
+    {
+      const double x = SPACING * col;
+      const double y = SPACING * row;
+      Eigen::Vector2d pixel(320.0 + 600.0 * x / 0.9, 240.0 + 610.0 * y / 0.9);
+      if (row == 1 && col == 1)
+        pixel.x() += 1.5;
+      correspondences.emplace_back(pixel, Eigen::Vector3d(x, y, 0.0));
+    }
+
+  const auto homography = calculateHomography(correspondences);
+
+  // At the least-squares minimum, the residual is orthogonal to every
+  // coefficient column. Accumulate A^T(Ah - b) from the homogeneous projections.
+  Eigen::Matrix<double, 8, 1> gradient = Eigen::Matrix<double, 8, 1>::Zero();
+  for (const auto& corr : correspondences)
+  {
+    const Eigen::Vector3d point(corr.in_target.x(), corr.in_target.y(), 1.0);
+    const Eigen::Vector3d projected = homography * point;
+    const Eigen::Vector2d residual = corr.in_image * projected.z() - projected.head<2>();
+    gradient.head<3>() -= residual.x() * point;
+    gradient.segment<3>(3) -= residual.y() * point;
+    gradient.tail<2>() += corr.in_image.dot(residual) * point.head<2>();
+  }
+  for (Eigen::Index col = 0; col < gradient.size(); ++col)
+    EXPECT_NEAR(gradient(col), 0.0, 1.0e-8) << "coefficient column " << col;
+}
+
 TEST(Homography, FitsPerfectCheckerboardWithDistinctRandomSamples)
 {
   Correspondence2D3D::Set correspondences;
