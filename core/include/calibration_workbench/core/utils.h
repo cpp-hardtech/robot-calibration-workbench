@@ -204,11 +204,9 @@ Eigen::Isometry3d poseCalToEigen(const Pose6d& pose);
  *   3. Compare the calculated estimations to the actual image points to make sure they are very close.
  *   If they are not close, we know that the correspondences are not valid
  *
- * The matrix H has 8 unique values.
- * These 8 values of the homography matrix can be solved for, given a set of (at least) 8 corresponding planar
- * vectors, by rearranging the above equations:
+ * Each correspondence contributes two equations for the eight unknown homography coefficients.
+ * The fit minimizes \f$ \lVert A H - b \rVert_2^2 \f$ over all input correspondences.
  *
- * \f$ A * H = b \f$, where \f$ H = inv(A) * b \f$
  *   - A is matrix (size 2*n x 8), where n is the number of corresponding vectors
  *   - H is a vector (size 8 x 1) of the unknown elements of the homography matrix
  *   - B is a vector (size 2*n x 1) representing the elements of one set of planar vectors

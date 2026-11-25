@@ -1,5 +1,6 @@
 #include <calibration_workbench/core/utils.h>
 #include <calibration_workbench/core/exceptions.h>
+#include <Eigen/QR>
 
 namespace calibration_workbench
 {
@@ -81,7 +82,7 @@ Eigen::Matrix<double, 3, 3, Eigen::RowMajor> calculateHomography(const Correspon
   // Map the elements of the H matrix into a column vector and solve for the first 8
   {
     Eigen::Map<Eigen::VectorXd> hv(H.data(), 9);
-    const auto decomposition = A.fullPivLu();
+    const auto decomposition = A.colPivHouseholderQr();
     if (decomposition.rank() != A.cols())
       throw ICalException("Cannot calculate a homography from degenerate correspondences");
     hv.head<8>() = decomposition.solve(b);
