@@ -193,3 +193,54 @@ if(NOT
       "Usage:")
   message(FATAL_ERROR "An empty batch did not produce a usage error")
 endif()
+
+foreach(
+  option IN
+  ITEMS --overlay
+        --correspondences
+        --batch
+        --unknown)
+  execute_process(
+    COMMAND "${DETECT_TARGET}" "${TARGET_CONFIG}" --batch "${quoted_image}" "${option}"
+    RESULT_VARIABLE status
+    OUTPUT_VARIABLE batch
+    ERROR_VARIABLE diagnostic)
+  if(NOT
+     status
+     EQUAL
+     2
+     OR NOT
+        batch
+        STREQUAL
+        ""
+     OR NOT
+        diagnostic
+        MATCHES
+        "Usage:"
+     OR NOT
+        diagnostic
+        MATCHES
+        "${option}")
+    message(
+      FATAL_ERROR
+        "Batch option ${option}: expected usage status 2 and empty CSV, got ${status}\n${batch}\n${diagnostic}")
+  endif()
+endforeach()
+
+configure_file("${TARGET_IMAGE}" "${TEST_DIRECTORY}/--camera.jpg" COPYONLY)
+execute_process(
+  COMMAND "${DETECT_TARGET}" "${TARGET_CONFIG}" --batch "./--camera.jpg"
+  WORKING_DIRECTORY "${TEST_DIRECTORY}"
+  RESULT_VARIABLE status
+  OUTPUT_VARIABLE batch
+  ERROR_VARIABLE diagnostic)
+if(NOT
+   status
+   EQUAL
+   0
+   OR NOT
+      batch
+      MATCHES
+      "^image_path,status,feature_count,point_count\n\"[.]/--camera[.]jpg\",detected,")
+  message(FATAL_ERROR "An explicit path to a dash-prefixed image failed (${status})\n${batch}\n${diagnostic}")
+endif()

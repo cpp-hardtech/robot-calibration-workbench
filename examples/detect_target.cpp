@@ -120,9 +120,19 @@ int main(int argc, char** argv)
 
   std::string overlay_path;
   bool write_correspondences = false;
-  for (int i = 3; !batch && i < argc; ++i)
+  for (int i = 3; i < argc; ++i)
   {
     const std::string_view option(argv[i]);
+    if (batch)
+    {
+      if (option.substr(0, 2) == "--")
+      {
+        std::cerr << "Batch mode does not accept option " << option << '\n' << usage;
+        return 2;
+      }
+      continue;
+    }
+
     if (option == "--correspondences" && !write_correspondences)
     {
       write_correspondences = true;

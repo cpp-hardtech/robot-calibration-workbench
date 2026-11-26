@@ -193,7 +193,8 @@ in argument order. Paths are quoted with embedded double quotes doubled. `featur
 counts detected feature IDs and `point_count` counts all detected image points. Status is
 `detected`, `no_detection`, `unreadable`, or `detector_error`. A failed input has zero
 counts, and the command continues with the remaining inputs. Use `--overlay` and
-`--correspondences` in single-image mode.
+`--correspondences` in single-image mode. In batch mode, pass paths such as
+`./--camera.jpg` for image filenames that start with `--`.
 
 Exit status is `0` when every image has detections, `1` when any image fails or a configuration
 or output error occurs, and `2` for invalid usage. A configuration error is reported before
