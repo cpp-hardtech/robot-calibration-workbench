@@ -78,7 +78,7 @@ std::string manifestPath(const fs::path& path, const std::optional<fs::path>& re
 int main(int argc, char** argv)
 {
   constexpr auto usage = "Usage: calibration_workbench_make_observations <image-dir> [--poses <pose-dir>] "
-                         "[--relative-to <manifest-directory>] [--recursive]\n";
+                         "[--relative-to <manifest-directory>] [--recursive] [--skip-missing-poses]\n";
   if (argc == 2 && std::string_view(argv[1]) == "--help")
   {
     std::cout << usage;
@@ -92,12 +92,18 @@ int main(int argc, char** argv)
 
   std::optional<fs::path> pose_directory, relative_to;
   bool recursive = false;
+  bool skip_missing_poses = false;
   for (int i = 2; i < argc; ++i)
   {
     const std::string_view option(argv[i]);
     if (option == "--recursive" && !recursive)
     {
       recursive = true;
+      continue;
+    }
+    if (option == "--skip-missing-poses" && !skip_missing_poses)
+    {
+      skip_missing_poses = true;
       continue;
     }
     const std::string_view value(i + 1 < argc ? argv[i + 1] : "");
@@ -117,6 +123,11 @@ int main(int argc, char** argv)
     std::cerr << "Invalid option or missing directory: " << option << '\n' << usage;
     return 2;
   }
+  if (skip_missing_poses && !pose_directory)
+  {
+    std::cerr << "--skip-missing-poses requires --poses\n";
+    return 2;
+  }
 
   try
   {
@@ -131,17 +142,23 @@ int main(int argc, char** argv)
     YAML::Node data(YAML::NodeType::Sequence);
     for (const auto& [stem, image] : images)
     {
+      const auto match = poses.find(stem);
+      if (pose_directory && match == poses.end())
+      {
+        if (!skip_missing_poses)
+          throw std::runtime_error("Missing pose for image " + image.string());
+        std::cerr << "Skipping image without a pose: " << image.string() << '\n';
+        continue;
+      }
+
       YAML::Node observation;
       observation["image"] = manifestPath(image, relative_to);
       if (pose_directory)
-      {
-        const auto match = poses.find(stem);
-        if (match == poses.end())
-          throw std::runtime_error("Missing pose for image " + image.string());
         observation["pose"] = manifestPath(match->second, relative_to);
-      }
       data.push_back(observation);
     }
+    if (data.size() == 0)
+      throw std::runtime_error("No images have matching poses");
 
     YAML::Node manifest;
     manifest["data"] = data;

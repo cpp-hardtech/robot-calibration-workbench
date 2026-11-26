@@ -72,6 +72,28 @@ function(expect_failure expected_status reason)
   endif()
 endfunction()
 
+function(expect_partial_manifest expected omitted_image)
+  execute_process(
+    COMMAND "${MAKE_OBSERVATIONS}" ${ARGN}
+    RESULT_VARIABLE status
+    OUTPUT_VARIABLE manifest
+    ERROR_VARIABLE diagnostic)
+  if(NOT
+     status
+     EQUAL
+     0
+     OR NOT
+        manifest
+        STREQUAL
+        expected
+     OR NOT
+        diagnostic
+        MATCHES
+        "Skipping image without a pose[^\n]*${omitted_image}")
+    message(FATAL_ERROR "Unexpected partial manifest (${status}): ${diagnostic}\n${manifest}")
+  endif()
+endfunction()
+
 expect_failure(1 "No image files" "${TEST_DIRECTORY}/empty")
 expect_failure(
   1
@@ -84,6 +106,11 @@ expect_failure(
   "Usage:"
   "${images}"
   --poses)
+expect_failure(
+  2
+  "--skip-missing-poses requires --poses"
+  "${images}"
+  --skip-missing-poses)
 expect_failure(
   2
   "Usage:"
@@ -122,6 +149,23 @@ expect_failure(
   "${images}"
   --poses
   "${unmatched_poses}")
+
+set(expected "data:\n  - image: ${images}/A frame.PNG\n    pose: ${unmatched_poses}/A frame.YML\n")
+expect_partial_manifest(
+  "${expected}"
+  "/z[.]jpeg"
+  "${images}"
+  --poses
+  "${unmatched_poses}"
+  --skip-missing-poses)
+file(REMOVE "${unmatched_poses}/A frame.YML")
+expect_failure(
+  1
+  "No images have matching poses"
+  "${images}"
+  --poses
+  "${unmatched_poses}"
+  --skip-missing-poses)
 
 set(dataset "${CMAKE_CURRENT_LIST_DIR}/data/test_set_10x10")
 set(session_images "${TEST_DIRECTORY}/session-images")
@@ -178,3 +222,17 @@ expect_failure(
   --poses
   "${session_poses}"
   --recursive)
+
+file(REMOVE "${session_poses}/first/frame.yaml")
+configure_file("${dataset}/poses/1.yaml" "${session_poses}/second/frame.yml" COPYONLY)
+set(expected "data:\n  - image: ../session-images/second/frame.png\n    pose: ../session-poses/second/frame.yml\n")
+expect_partial_manifest(
+  "${expected}"
+  "/first/frame[.]png"
+  "${session_images}"
+  --poses
+  "${session_poses}"
+  --recursive
+  --relative-to
+  "${manifests}"
+  --skip-missing-poses)

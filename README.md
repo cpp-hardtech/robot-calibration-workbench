@@ -234,9 +234,13 @@ without extensions. Pose paths must mirror the image directory structure. For ex
 `images/session-a/frame.png` is paired with `poses/session-a/frame.yaml`. The same frame
 name can appear in several sessions.
 
+For an incomplete capture, pass `--skip-missing-poses` with `--poses` to
+write a manifest of the matched pairs. The command reports each skipped image
+on standard error and requires at least one matched pair.
+
 Exit status is `0` for a manifest, `1` for a directory, pairing, or output error, and `2`
-for invalid usage. Empty scans, duplicate stems, and missing pose matches produce a
-diagnostic on standard error before the command writes a manifest.
+for invalid usage. Empty scans, duplicate stems, and missing pose matches in the default
+paired mode produce a diagnostic on standard error before the command writes a manifest.
 
 ## Export observation quality
 
