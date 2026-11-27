@@ -282,6 +282,3 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Distributed under the Apache License, Version 2.0. The original copyright notice and the
 full license text are retained in [LICENSE](LICENSE).
-
-In accordance with section 4(b) of the License, modification notices are recorded in the
-repository history and in NOTICE.
