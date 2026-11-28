@@ -19,10 +19,15 @@ inline std::optional<HeadlessOutputArguments> parseHeadlessOutputArguments(int a
   HeadlessOutputArguments output{ argc, nullptr };
   for (int i = 2; i < argc; ++i)
   {
-    if (std::string_view(argv[i]) != "--observation-report")
+    const std::string_view argument(argv[i]);
+    if (argument.substr(0, 2) != "--")
       continue;
 
-    if (i != argc - 2 || argv[i + 1][0] == '\0' || std::string_view(argv[i + 1]) == "--observation-report")
+    if (argument != "--observation-report" || i != argc - 2)
+      return std::nullopt;
+
+    const std::string_view report_path(argv[i + 1]);
+    if (report_path.empty() || report_path.substr(0, 2) == "--")
       return std::nullopt;
 
     output = { i, argv[i + 1] };

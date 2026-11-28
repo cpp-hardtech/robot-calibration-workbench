@@ -3,7 +3,7 @@ set(config "${SAMPLE_DIR}/cal_data.yaml")
 set(image_only "${OUTPUT_DIR}/image-only.yaml")
 set(missing_pose_files "${OUTPUT_DIR}/missing-pose-files.yaml")
 set(intrinsic_result "${OUTPUT_DIR}/intrinsic.yaml")
-set(ros_result "${OUTPUT_DIR}/ros.yaml")
+set(ros_result "${OUTPUT_DIR}/--ros.yaml")
 set(intrinsic_report "${OUTPUT_DIR}/intrinsic.csv")
 set(hand_eye_result "${OUTPUT_DIR}/hand-eye.yaml")
 set(hand_eye_report "${OUTPUT_DIR}/hand-eye.csv")
@@ -55,7 +55,11 @@ function(
   mode
   expected
   reason)
-  execute_process(COMMAND "${executable}" "${mode}" ${ARGN} RESULT_VARIABLE status ERROR_VARIABLE error)
+  execute_process(
+    COMMAND "${executable}" "${mode}" ${ARGN}
+    WORKING_DIRECTORY "${OUTPUT_DIR}"
+    RESULT_VARIABLE status
+    ERROR_VARIABLE error)
   if(NOT
      status
      STREQUAL
@@ -67,6 +71,33 @@ function(
     message(FATAL_ERROR "${executable} returned ${status}, expected ${expected}: ${error}")
   endif()
 endfunction()
+
+set(unknown_option "--observation-reprot")
+file(REMOVE "${OUTPUT_DIR}/${unknown_option}")
+run_calibration(
+  "${INTRINSIC_APP}"
+  --headless
+  1
+  "Usage:.*--headless"
+  "${OUTPUT_DIR}/opencv.yaml"
+  "${image_only}"
+  "${rejected_result}"
+  "${unknown_option}")
+foreach(app IN ITEMS "${INTRINSIC_APP}" "${HAND_EYE_APP}")
+  run_calibration(
+    "${app}"
+    --headless
+    1
+    "Usage:.*--headless"
+    "${config}"
+    "${config}"
+    "${rejected_result}"
+    --observation-report
+    "${unknown_option}")
+endforeach()
+if(EXISTS "${rejected_result}" OR EXISTS "${OUTPUT_DIR}/${unknown_option}")
+  message(FATAL_ERROR "Malformed headless arguments left calibration output files")
+endif()
 
 run_calibration(
   "${HAND_EYE_APP}"
@@ -85,7 +116,7 @@ run_calibration(
   "${OUTPUT_DIR}/opencv.yaml"
   "${image_only}"
   "${intrinsic_result}"
-  "${ros_result}"
+  "./--ros.yaml"
   --observation-report
   "${intrinsic_report}")
 run_calibration(
